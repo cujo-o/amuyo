@@ -1,4 +1,3 @@
-// app/page.tsx
 "use client";
 
 import { useState, useEffect } from "react";
@@ -9,7 +8,7 @@ import { siteTranslations } from "@/utils/translations";
 const FloodVisualizer = dynamic(() => import("@/components/FloodVisualizer"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-cyan-400 animate-pulse">
+    <div className="w-full h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-blue-400 animate-pulse">
       LOADING 3D WATER SIMULATION...
     </div>
   ),
@@ -40,7 +39,6 @@ export default function Dashboard() {
 
   const t = siteTranslations[language];
 
-  // Auto-request location when user enters the site
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
@@ -76,12 +74,20 @@ export default function Dashboard() {
         method: "POST",
         body: formData,
       });
-      if (!res.ok) throw new Error("Analysis failed");
+
+      // EXPLICIT ERROR CATCHING: Shows exact Gemma/Vercel failure reason
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(
+          errorData?.error ||
+            `Server Status ${res.status}: Check API Key or Model Name`,
+        );
+      }
 
       const data: FloodAnalysis = await res.json();
       setAnalysisData(data);
-    } catch (error) {
-      setErrorMessage("Could not evaluate image. Please try another photo.");
+    } catch (error: any) {
+      setErrorMessage(error.message); // Will print exact reason on screen
     } finally {
       setLoading(false);
     }
@@ -101,14 +107,10 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-[#070709] text-gray-100 font-sans selection:bg-blue-900 pb-12 transition-all">
-      {/* Navigation Header */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0c0c0f]/80 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center font-bold text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]">
-            A
-          </div>
           <div>
-            <h1 className="text-lg font-bold tracking-wider text-white">
+            <h1 className="text-xl font-bold tracking-wider text-white">
               {t.navTitle}
             </h1>
             <p className="text-[10px] text-gray-400 font-mono">
@@ -117,7 +119,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Top-Right Language Switcher Modal Button */}
         <div className="relative">
           <button
             onClick={() => setIsLangModalOpen(!isLangModalOpen)}
@@ -154,11 +155,8 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Main Container */}
       <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-2">
-        {/* LEFT COLUMN: Upload & Direct Metrics */}
         <div className="lg:col-span-5 flex flex-col gap-6">
-          {/* Plain Language Photo Upload */}
           <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl">
             <h2 className="text-sm font-bold text-white mb-1">
               {t.uploadTitle}
@@ -203,13 +201,12 @@ export default function Dashboard() {
               )}
             </button>
             {errorMessage && (
-              <p className="mt-3 text-xs text-red-400 font-mono">
-                {errorMessage}
-              </p>
+              <div className="mt-3 p-3 bg-red-950/40 border border-red-900/50 rounded-lg text-xs text-red-400 font-mono break-words">
+                <strong>Error:</strong> {errorMessage}
+              </div>
             )}
           </div>
 
-          {/* Clean Human Metrics Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
               <span className="text-xs text-gray-400 font-medium">
@@ -220,7 +217,6 @@ export default function Dashboard() {
                 <span className="text-xs text-blue-400">kPa</span>
               </div>
             </div>
-
             <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
               <span className="text-xs text-gray-400 font-medium">
                 {t.electricalRisk}
@@ -231,7 +227,6 @@ export default function Dashboard() {
                 {analysisData?.electricalHazardLevel || "Safe"}
               </div>
             </div>
-
             <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
               <span className="text-xs text-gray-400 font-medium">
                 {t.vehicleAccess}
@@ -241,7 +236,6 @@ export default function Dashboard() {
                   "All Cars"}
               </div>
             </div>
-
             <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
               <span className="text-xs text-gray-400 font-medium">
                 {t.submergedInfra}
@@ -252,7 +246,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Simple Emergency Warning Card */}
           {analysisData && (
             <div className="bg-[#111115] rounded-2xl border border-red-900/50 p-5 shadow-xl animate-in fade-in slide-in-from-bottom-4">
               <div className="flex justify-between items-center mb-3">
@@ -267,7 +260,6 @@ export default function Dashboard() {
                   🔊 {t.speakBtn}
                 </button>
               </div>
-
               <div className="p-3.5 bg-black/40 rounded-xl border border-white/5 text-sm text-gray-200 leading-relaxed">
                 {analysisData.alerts[language]}
               </div>
@@ -275,7 +267,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* RIGHT COLUMN: Interactive 3D & Map Viewport */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="bg-[#111115] rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[460px]">
             <div className="flex border-b border-white/10 bg-[#0a0a0d]">
@@ -305,13 +296,11 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Simple AI Reasoning Matrix */}
           {analysisData && (
             <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 space-y-4 animate-in fade-in slide-in-from-bottom-4">
               <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">
                 {t.aiReasoning}
               </h3>
-
               <div className="space-y-2 text-xs font-mono text-gray-300 bg-black/40 p-4 rounded-xl border border-white/5">
                 <div>
                   <span className="text-blue-400">1.</span>{" "}
