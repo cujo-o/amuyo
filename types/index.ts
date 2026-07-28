@@ -1,49 +1,48 @@
 export type RiskStatus = "SAFE" | "WARNING" | "HIGH_RISK" | "CRITICAL";
 export type Language = "english" | "pidgin" | "yoruba" | "igbo";
-export type VehicleAccess =
-  | "ALL_VEHICLES"
-  | "HEAVY_ONLY"
-  | "HIGH_CLEARANCE_ONLY"
-  | "IMPASSABLE";
-export type ElectricalHazard = "LOW" | "MODERATE" | "SEVERE" | "EXTREME";
+
+export interface MultilingualText {
+  english: string;
+  pidgin: string;
+  yoruba: string;
+  igbo: string;
+}
+
+export interface MultilingualArray {
+  english: string[];
+  pidgin: string[];
+  yoruba: string[];
+  igbo: string[];
+}
+
+export interface Scene3D {
+  terrainType: "URBAN" | "RURAL" | "RESIDENTIAL";
+  structures: {
+    type: "HOUSE" | "TALL_BUILDING" | "TREE";
+    height: number; // 1 to 4
+    x: number; // -2.0 to 2.0
+    z: number; // -2.0 to 2.0
+  }[];
+}
 
 export interface FloodAnalysis {
-  // Quantitative Physics & Hydrodynamics
   estimatedWaterLevelMeters: number;
-  hydrostaticPressureKPa: number; // Hydrostatic force P = rho * g * h
+  hydrostaticPressureKPa: number;
   waveVelocityMs: number;
   submergedStructuralPercentage: number;
-
-  // Tactical Risk Vectors
-  riskScore: number; // 1 to 10
+  riskScore: number;
   status: RiskStatus;
-  electricalHazardLevel: ElectricalHazard;
-  vehicleAccessClass: VehicleAccess;
-  diseaseVectorRiskIndex: number; // 1-10 (stagnant water contamination)
-
-  // Location & Spatial
+  electricalHazardLevel: string;
+  vehicleAccessClass: string;
   locationName: string;
-  coordinates: {
-    lat: number;
-    lng: number;
-  };
+  coordinates: { lat: number; lng: number };
 
-  // Deep Gemma 4 Engineering Reasoning Chain
+  scene3D: Scene3D;
   reasoningChain: {
-    visualBenchmark: string; // How depth was calculated using visual anchors
-    hydrodynamicForces: string; // Force & structural stress assessment
-    infrastructureVulnerability: string; // Electrical grid, roads, and building impact
-    predictiveEvacuationWindow: string; // Estimated time before area becomes impassable
+    visualBenchmark: MultilingualText;
+    hydrodynamicForces: MultilingualText;
+    predictiveEvacuationWindow: MultilingualText;
   };
-
-  // Actionable Protocols
-  tacticalActionPlan: string[]; // Step-by-step instructions for emergency crews
-
-  // Multilingual Public Broadcast
-  alerts: {
-    english: string;
-    pidgin: string;
-    yoruba: string;
-    igbo: string;
-  };
+  tacticalActionPlan: MultilingualArray;
+  alerts: MultilingualText;
 }
