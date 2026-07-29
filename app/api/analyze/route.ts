@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { FloodAnalysis } from "@/types";
 
-// ⚡ SPEED OPTIMIZATION 1: Use Edge Runtime to eliminate server cold-start delays
+// ⚡ SPEED OPTIMIZATION 1: Edge Runtime gives you a longer timeout window and zero cold-start delay
 export const runtime = "edge";
 export const maxDuration = 60;
 
@@ -87,9 +87,9 @@ export async function POST(req: Request) {
       }
     `;
 
-    // ⚡ SPEED OPTIMIZATION 3: Switch to the lighter, faster 9B Gemma model
+    // ⚡ STRICT COMPLIANCE: Forcing the exact Gemma 4 model required by the hackathon
     const response = await ai.models.generateContent({
-      model: "gemma-4-9b-it",
+      model: "gemma-4-26b-a4b-it",
       contents: [
         prompt,
         {
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!response.text) throw new Error("Empty response from Gemma.");
+    if (!response.text) throw new Error("Empty response from AI engine.");
 
     const cleanJson = response.text.replace(/```json|```/gi, "").trim();
     const analysis: FloodAnalysis = JSON.parse(cleanJson);
