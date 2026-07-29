@@ -2,6 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 import { NextResponse } from "next/server";
 import { FloodAnalysis } from "@/types";
 
+// ⚡ SPEED OPTIMIZATION 1: Use Edge Runtime to eliminate server cold-start delays
+export const runtime = "edge";
 export const maxDuration = 60;
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY as string });
@@ -17,11 +19,17 @@ export async function POST(req: Request) {
     const arrayBuffer = await imageFile.arrayBuffer();
     const base64Data = Buffer.from(arrayBuffer).toString("base64");
 
+    // Fetch weather with a strict 2-second timeout so it never bottlenecks the AI
     let weatherContext = "";
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
       const weatherRes = await fetch(
         "https://api.open-meteo.com/v1/forecast?latitude=7.8&longitude=6.7&hourly=precipitation,windspeed_10m&forecast_days=1",
+        { signal: controller.signal },
       );
+      clearTimeout(timeoutId);
+
       if (weatherRes.ok) {
         const weatherData = await weatherRes.json();
         const totalRain = weatherData.hourly.precipitation.reduce(
@@ -30,8 +38,11 @@ export async function POST(req: Request) {
         );
         weatherContext = `[METEOROLOGY]: 24-Hr forecast shows ${totalRain.toFixed(1)}mm rainfall. Factor into predictive window.`;
       }
-    } catch (e) {}
+    } catch (e) {
+      console.warn("Weather API skipped to maintain execution speed.");
+    }
 
+    // ⚡ SPEED OPTIMIZATION 2: Strict instruction for brevity to reduce token generation time
     const prompt = `
       You are Amuyo's spatial and hydrological AI. Analyze this flood image from Nigeria.
       ${weatherContext}
@@ -39,6 +50,8 @@ export async function POST(req: Request) {
       1. Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
       2. Analyze the spatial layout (scene3D). Estimate the number of visible houses, tall buildings, and trees. Map their relative positions on an X/Z grid from -2.0 to 2.0.
       3. Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
+      
+      CRITICAL SPEED CONSTRAINT: Keep all reasoning strings and action plans strictly to ONE short sentence. Be extremely concise.
 
       Return ONLY valid JSON matching this exact structure:
       {
@@ -60,30 +73,35 @@ export async function POST(req: Request) {
           ]
         },
         "reasoningChain": {
-          "visualBenchmark": { "english": "Water reaching window level...", "pidgin": "Water don reach window...", "yoruba": "...", "igbo": "..." },
+          "visualBenchmark": { "english": "Water reaching window level.", "pidgin": "Water don reach window.", "yoruba": "...", "igbo": "..." },
           "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
           "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
         },
         "tacticalActionPlan": {
-          "english": ["Isolate power grid", "Deploy boats"],
-          "pidgin": ["Off light for area", "Bring boat come"],
-          "yoruba": ["Pa ina", "Gbe oko omi wa"],
-          "igbo": ["Gbanyuo ọkụ", "Weta ụgbọ mmiri"]
+          "english": ["Isolate power grid.", "Deploy boats."],
+          "pidgin": ["Off light.", "Bring boat."],
+          "yoruba": ["Pa ina.", "Gbe oko omi wa."],
+          "igbo": ["Gbanyuo ọkụ.", "Weta ụgbọ mmiri."]
         },
         "alerts": { "english": "Evacuate!", "pidgin": "Comot there!", "yoruba": "Kuro nibe!", "igbo": "Pụọ ebe ahụ!" }
       }
     `;
 
-    // Speed Optimization: Strict JSON configuration
+    // ⚡ SPEED OPTIMIZATION 3: Switch to the lighter, faster 9B Gemma model
     const response = await ai.models.generateContent({
-      model: "gemma-4-26b-a4b-it",
+      model: "gemma-4-9b-it",
       contents: [
         prompt,
-        { inlineData: { mimeType: imageFile.type, data: base64Data } },
+        {
+          inlineData: {
+            mimeType: imageFile.type || "image/jpeg",
+            data: base64Data,
+          },
+        },
       ],
       config: {
-        temperature: 0.1, // Forces highly deterministic, fast output
-        responseMimeType: "application/json", // Skips markdown formatting entirely
+        temperature: 0.1, // Forces deterministic, fast output
+        responseMimeType: "application/json", // Bypasses markdown formatting
       },
     });
 
@@ -95,7 +113,7 @@ export async function POST(req: Request) {
     return NextResponse.json(analysis);
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || "Failed to process telemetry data" },
+      { error: error?.message || "Server processing failed." },
       { status: 500 },
     );
   }
