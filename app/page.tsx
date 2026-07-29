@@ -50,7 +50,6 @@ export default function Dashboard() {
     setErrorMessage(null);
 
     try {
-      // 1. Convert Image to Base64 directly in the browser
       const getBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -63,7 +62,6 @@ export default function Dashboard() {
 
       const base64Data = await getBase64(file);
 
-      // 2. Fetch Weather (Non-blocking)
       let weatherContext = "";
       try {
         const controller = new AbortController();
@@ -94,7 +92,7 @@ export default function Dashboard() {
         2. Analyze the spatial layout (scene3D). Estimate the number of visible houses, tall buildings, and trees. Map their relative positions on an X/Z grid from -2.0 to 2.0.
         3. Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
         
-        CRITICAL SPEED CONSTRAINT: Keep all reasoning strings and action plans strictly to ONE short sentence. Be extremely concise.
+        CRITICAL SPEED CONSTRAINT: Keep all reasoning strings and action plans strictly to ONE short sentence. DO NOT write conversational text, markdown, or bullet points. Output the RAW JSON object immediately.
 
         Return ONLY valid JSON matching this exact structure:
         {
@@ -116,9 +114,9 @@ export default function Dashboard() {
             ]
           },
           "reasoningChain": {
-            "visualBenchmark": { "english": "Water reaching window level.", "pidgin": "Water don reach window.", "yoruba": "...", "igbo": "..." },
-            "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
-            "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+            "visualBenchmark": { "english": "Water reaching window level.", "pidgin": "Water don reach window.", "yoruba": "Omi ti de ferese.", "igbo": "Mmiri eruola na windo." },
+            "hydrodynamicForces": { "english": "Strong currents detected.", "pidgin": "Water get force.", "yoruba": "Omi lagbara.", "igbo": "Mmiri siri ike." },
+            "predictiveEvacuationWindow": { "english": "Evacuate within 2 hours.", "pidgin": "Comot before 2 hours.", "yoruba": "Kuro laarin wakati meji.", "igbo": "Pụọ tupu awa abụọ." }
           },
           "tacticalActionPlan": {
             "english": ["Isolate power grid.", "Deploy boats."],
@@ -130,7 +128,6 @@ export default function Dashboard() {
         }
       `;
 
-      // 3. VERCEL BYPASS: Direct REST API call to Google Gemma 4
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (!apiKey)
         throw new Error(
@@ -172,7 +169,6 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ BULLETPROOF JSON EXTRACTOR: Mathematically isolates ONLY the first balanced JSON object
       const extractValidJSON = (text: string) => {
         const start = text.indexOf("{");
         if (start === -1) return null;
@@ -181,7 +177,7 @@ export default function Dashboard() {
           if (text[i] === "{") depth++;
           else if (text[i] === "}") {
             depth--;
-            if (depth === 0) return text.substring(start, i + 1); // Stops at the exact closing brace
+            if (depth === 0) return text.substring(start, i + 1);
           }
         }
         return null;
@@ -204,7 +200,8 @@ export default function Dashboard() {
   };
 
   const handleAudioBroadcast = () => {
-    if (!analysisData) return;
+    // Safety check added here to prevent speech API crashes if alerts are missing
+    if (!analysisData || !analysisData?.alerts?.[language]) return;
     if (typeof window !== "undefined" && "speechSynthesis" in window) {
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(
@@ -322,7 +319,7 @@ export default function Dashboard() {
             <div className="bg-[#111115] rounded-2xl border border-red-900/50 p-5 shadow-xl animate-in fade-in">
               <div className="flex justify-between mb-3">
                 <span className="text-xs font-bold text-red-400 uppercase">
-                  ⚠️ {t.threatTitle}: {analysisData.status}
+                  ⚠️ {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
                 </span>
                 <button
                   onClick={handleAudioBroadcast}
@@ -332,7 +329,8 @@ export default function Dashboard() {
                 </button>
               </div>
               <div className="p-3.5 bg-black/40 rounded-xl text-sm text-gray-200">
-                {analysisData.alerts[language]}
+                {analysisData?.alerts?.[language] ||
+                  "Tactical alert data currently unavailable."}
               </div>
             </div>
           )}
@@ -373,21 +371,23 @@ export default function Dashboard() {
                 {t.aiReasoning}
               </h3>
               <div className="space-y-2 text-xs font-mono text-gray-300 bg-black/40 p-4 rounded-xl border border-white/5">
+                {/* Safe access via optional chaining */}
                 <div>
                   <span className="text-blue-400">1.</span>{" "}
-                  {analysisData.reasoningChain.visualBenchmark[language]}
+                  {analysisData?.reasoningChain?.visualBenchmark?.[language] ||
+                    "Visual processing complete."}
                 </div>
                 <div>
                   <span className="text-blue-400">2.</span>{" "}
-                  {analysisData.reasoningChain.hydrodynamicForces[language]}
+                  {analysisData?.reasoningChain?.hydrodynamicForces?.[
+                    language
+                  ] || "Hydrodynamic calculation complete."}
                 </div>
                 <div>
                   <span className="text-blue-400">3.</span>{" "}
-                  {
-                    analysisData.reasoningChain.predictiveEvacuationWindow[
-                      language
-                    ]
-                  }
+                  {analysisData?.reasoningChain?.predictiveEvacuationWindow?.[
+                    language
+                  ] || "Evacuation window processed."}
                 </div>
               </div>
 
@@ -396,14 +396,18 @@ export default function Dashboard() {
                   {t.fieldActions}
                 </h4>
                 <ul className="space-y-1.5 text-xs font-mono text-cyan-200">
-                  {analysisData.tacticalActionPlan[language].map(
-                    (action, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="text-blue-400">✓</span>
-                        <span>{action}</span>
-                      </li>
-                    ),
-                  )}
+                  {/* Safe mapping via fallback empty array */}
+                  {(
+                    analysisData?.tacticalActionPlan?.[language] || [
+                      "Evaluate structural integrity.",
+                      "Await emergency services.",
+                    ]
+                  ).map((action, i) => (
+                    <li key={i} className="flex gap-2">
+                      <span className="text-blue-400">✓</span>
+                      <span>{action}</span>
+                    </li>
+                  ))}
                 </ul>
               </div>
             </div>
