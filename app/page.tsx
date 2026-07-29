@@ -170,10 +170,18 @@ export default function Dashboard() {
         throw new Error(responseData.error?.message || "Google API Error");
       }
 
-      const textResponse = responseData.candidates[0].content.parts[0].text;
-      const cleanJson = textResponse.replace(/```json|```/gi, "").trim();
-      const analysis: FloodAnalysis = JSON.parse(cleanJson);
+     const textResponse = responseData.candidates[0].content.parts[0].text;
+      
+      // ⚡ ROBUST JSON EXTRACTION: Scans past Gemma's conversational markdown and isolates the exact JSON block
+      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
+      
+      if (!jsonMatch) {
+        throw new Error("Could not extract JSON from Gemma's response.");
+      }
 
+      const cleanJson = jsonMatch[0];
+      const analysis: FloodAnalysis = JSON.parse(cleanJson);
+      
       setAnalysisData(analysis);
     } catch (error: any) {
       console.error(error);
