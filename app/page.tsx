@@ -89,8 +89,7 @@ export default function Dashboard() {
         ${weatherContext}
 
         1. Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
-        2. Analyze the spatial layout (scene3D). Estimate the number of visible houses, tall buildings, and trees. Map their relative positions on an X/Z grid from -2.0 to 2.0.
-        3. Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
+        2. Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
         
         CRITICAL SPEED CONSTRAINT: Keep all reasoning strings and action plans strictly to ONE short sentence. DO NOT write conversational text, markdown, or bullet points. Output the RAW JSON object immediately.
 
@@ -106,13 +105,6 @@ export default function Dashboard() {
           "vehicleAccessClass": "HIGH_CLEARANCE_ONLY",
           "locationName": "Lokoja Basin",
           "coordinates": { "lat": 7.7969, "lng": 6.7333 },
-          "scene3D": {
-            "terrainType": "RESIDENTIAL",
-            "structures": [
-              { "type": "HOUSE", "height": 1.5, "x": -1.0, "z": 0.5 },
-              { "type": "TREE", "height": 2.5, "x": 1.2, "z": -1.0 }
-            ]
-          },
           "reasoningChain": {
             "visualBenchmark": { "english": "Water reaching window level.", "pidgin": "Water don reach window.", "yoruba": "Omi ti de ferese.", "igbo": "Mmiri eruola na windo." },
             "hydrodynamicForces": { "english": "Strong currents detected.", "pidgin": "Water get force.", "yoruba": "Omi lagbara.", "igbo": "Mmiri siri ike." },
@@ -355,10 +347,7 @@ export default function Dashboard() {
             </div>
             <div className="flex-1 relative">
               {activeTab === "3D" ? (
-                <FloodVisualizer
-                  data={analysisData}
-                  imageTextureUrl={previewUrl}
-                />
+                <FloodVisualizer data={analysisData} />
               ) : (
                 <HazardMap data={analysisData} />
               )}
