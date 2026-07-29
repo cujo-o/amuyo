@@ -170,18 +170,30 @@ export default function Dashboard() {
         throw new Error(responseData.error?.message || "Google API Error");
       }
 
-     const textResponse = responseData.candidates[0].content.parts[0].text;
-      
-      // ⚡ ROBUST JSON EXTRACTION: Scans past Gemma's conversational markdown and isolates the exact JSON block
-      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-      
-      if (!jsonMatch) {
-        throw new Error("Could not extract JSON from Gemma's response.");
+      const textResponse = responseData.candidates[0].content.parts[0].text;
+
+      // ⚡ BULLETPROOF JSON EXTRACTOR: Mathematically isolates ONLY the first balanced JSON object
+      const extractValidJSON = (text: string) => {
+        const start = text.indexOf("{");
+        if (start === -1) return null;
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === "{") depth++;
+          else if (text[i] === "}") {
+            depth--;
+            if (depth === 0) return text.substring(start, i + 1); // Stops at the exact closing brace
+          }
+        }
+        return null;
+      };
+
+      const cleanJson = extractValidJSON(textResponse);
+
+      if (!cleanJson) {
+        throw new Error("Could not extract valid JSON from Gemma's response.");
       }
 
-      const cleanJson = jsonMatch[0];
       const analysis: FloodAnalysis = JSON.parse(cleanJson);
-      
       setAnalysisData(analysis);
     } catch (error: any) {
       console.error(error);
