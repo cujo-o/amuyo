@@ -26,7 +26,7 @@ const HazardMap = dynamic(() => import("@/components/HazardMap"), {
 export default function Dashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [analysisData, setAnalysisData] = useState<any | null>(null); // Changed to any to handle schema drift
+  const [analysisData, setAnalysisData] = useState<any | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>("english");
@@ -188,9 +188,9 @@ export default function Dashboard() {
                 ],
               },
             ],
+            // ⚡ FIX 1: Removed responseMimeType so Google's server doesn't throw a 500 error
             generationConfig: {
               temperature: 0.2,
-              responseMimeType: "application/json",
             },
           }),
         },
@@ -202,13 +202,26 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-      if (!jsonMatch)
-        throw new Error(
-          "Could not extract balanced JSON from Gemma's response. Retrying might help.",
-        );
+      // ⚡ FIX 2: Bulletproof JSON Extractor to prevent "Unexpected token" errors
+      const extractValidJSON = (text: string) => {
+        const start = text.indexOf("{");
+        if (start === -1) return null;
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === "{") depth++;
+          else if (text[i] === "}") {
+            depth--;
+            if (depth === 0) return text.substring(start, i + 1);
+          }
+        }
+        return null;
+      };
 
-      const cleanJson = jsonMatch[0];
+      const cleanJson = extractValidJSON(textResponse);
+
+      if (!cleanJson) {
+        throw new Error("Could not extract valid JSON from Gemma's response.");
+      }
 
       // ⚡ DEBUGGING: Look at this in your browser console (F12) to see what Gemma actually wrote
       console.log("RAW GEMMA OUTPUT:", cleanJson);
