@@ -26,7 +26,7 @@ const HazardMap = dynamic(() => import("@/components/HazardMap"), {
 export default function Dashboard() {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [analysisData, setAnalysisData] = useState<FloodAnalysis | null>(null);
+  const [analysisData, setAnalysisData] = useState<any | null>(null); // Changed to any to handle schema drift
   const [loading, setLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [language, setLanguage] = useState<Language>("english");
@@ -101,7 +101,6 @@ export default function Dashboard() {
     setAnalysisData(null);
 
     try {
-      // ⚡ Client-Side Canvas Image Compression
       const getBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -130,7 +129,6 @@ export default function Dashboard() {
 
       const base64Data = await getBase64(file);
 
-      // ⚡ VERCEL BYPASS: Direct REST API call to Google Gemma 4
       const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
       if (!apiKey)
         throw new Error(
@@ -142,9 +140,9 @@ export default function Dashboard() {
         Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
         Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
         
-        CRITICAL SPEED CONSTRAINT: Output ONLY the RAW JSON object immediately. DO NOT use conversational text, introductory remarks, or markdown. Keep reasoning and action plans to ONE concise sentence.
+        CRITICAL INSTRUCTION: Output ONLY the RAW JSON object. DO NOT wrap the JSON in a parent key like "data" or "analysis". 
+        Do not use conversational text or markdown. Replace the "..." placeholders with your actual generated text.
         
-        Return ONLY valid JSON matching this exact structure:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -191,7 +189,7 @@ export default function Dashboard() {
               },
             ],
             generationConfig: {
-              temperature: 0.1,
+              temperature: 0.2,
               responseMimeType: "application/json",
             },
           }),
@@ -199,28 +197,37 @@ export default function Dashboard() {
       );
 
       const responseData = await res.json();
-
-      if (!res.ok) {
+      if (!res.ok)
         throw new Error(responseData.error?.message || "Google API Error");
-      }
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ ROBUST JSON EXTRACTION: Scans past Gemma's conversational markdown and isolates the exact JSON block
       const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
-
-      if (!jsonMatch) {
+      if (!jsonMatch)
         throw new Error(
           "Could not extract balanced JSON from Gemma's response. Retrying might help.",
         );
-      }
 
       const cleanJson = jsonMatch[0];
-      const analysis: FloodAnalysis = JSON.parse(cleanJson);
 
-      setAnalysisData(analysis);
+      // ⚡ DEBUGGING: Look at this in your browser console (F12) to see what Gemma actually wrote
+      console.log("RAW GEMMA OUTPUT:", cleanJson);
 
-      if (analysis.riskScore >= 7 || analysis.status === "CRITICAL") {
+      let parsedData = JSON.parse(cleanJson);
+
+      // 🛡️ AUTO-UNWRAPPER: If Gemma hides the data inside a parent key, automatically extract it
+      if (parsedData.floodAnalysis) parsedData = parsedData.floodAnalysis;
+      else if (parsedData.analysis) parsedData = parsedData.analysis;
+      else if (parsedData.data) parsedData = parsedData.data;
+
+      // 🛡️ SCHEMA DRIFT FALLBACK: If standard keys are still completely missing, attach the raw JSON string
+      if (!parsedData.status && !parsedData.hydrostaticPressureKPa) {
+        parsedData._rawSchemaDrift = cleanJson;
+      }
+
+      setAnalysisData(parsedData);
+
+      if (parsedData.riskScore >= 7 || parsedData.status === "CRITICAL") {
         setShowEmergencyModal(true);
       }
     } catch (error: any) {
@@ -291,7 +298,6 @@ export default function Dashboard() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Interactive Location Toggle */}
           <button
             onClick={toggleLocation}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
@@ -387,7 +393,6 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Pre-Analysis Status UI (Simplified) */}
           {!analysisData && !loading && (
             <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl animate-in fade-in slide-in-from-bottom-4">
               <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -418,69 +423,68 @@ export default function Dashboard() {
                     {weatherSummary}
                   </span>
                 </div>
-
-                <div className="p-4 border border-blue-900/30 bg-blue-950/10 rounded-xl mt-2">
-                  <h4 className="text-xs font-bold text-blue-400 mb-1">
-                    What to do next
-                  </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                    Please upload a photo of the flooded area to begin the
-                    analysis.
-                  </p>
-                  <button
-                    onClick={() => setActiveTab("MAP")}
-                    className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 group"
-                  >
-                    <span className="group-hover:translate-x-1 transition-transform">
-                      &rarr;
-                    </span>{" "}
-                    Open Hazard Map
-                  </button>
-                </div>
               </div>
             </div>
           )}
 
-          {/* Post-Analysis Metrics */}
           {analysisData && (
             <>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                  <span className="text-xs text-gray-400">
-                    {t.waterPressure}
-                  </span>
-                  <div className="text-xl font-bold font-mono text-white mt-1">
-                    {analysisData?.hydrostaticPressureKPa || "0.0"}{" "}
-                    <span className="text-xs text-blue-400">kPa</span>
+              {/* 🛡️ SCHEMA DRIFT FALLBACK UI: Displays if standard keys fail */}
+              {analysisData._rawSchemaDrift ? (
+                <div className="bg-red-950/20 border border-red-900/50 rounded-2xl p-5 shadow-xl animate-in fade-in">
+                  <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    ⚠️ Schema Drift Detected
+                  </h3>
+                  <p className="text-xs text-gray-400 mb-3">
+                    Gemma 4 analyzed the image but returned a non-standard data
+                    structure. Raw AI output below:
+                  </p>
+                  <pre className="text-[10px] text-red-300 font-mono bg-black/50 p-3 rounded-xl overflow-x-auto border border-red-900/30 whitespace-pre-wrap">
+                    {analysisData._rawSchemaDrift}
+                  </pre>
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
+                      <span className="text-xs text-gray-400">
+                        {t.waterPressure}
+                      </span>
+                      <div className="text-xl font-bold font-mono text-white mt-1">
+                        {analysisData?.hydrostaticPressureKPa || "0.0"}{" "}
+                        <span className="text-xs text-blue-400">kPa</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
+                      <span className="text-xs text-gray-400">
+                        {t.electricalRisk}
+                      </span>
+                      <div
+                        className={`text-sm font-bold font-mono mt-1 ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400" : "text-yellow-400"}`}
+                      >
+                        {analysisData?.electricalHazardLevel || "Safe"}
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                  <span className="text-xs text-gray-400">
-                    {t.electricalRisk}
-                  </span>
-                  <div
-                    className={`text-sm font-bold font-mono mt-1 ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400" : "text-yellow-400"}`}
-                  >
-                    {analysisData?.electricalHazardLevel || "Safe"}
+                  <div className="bg-[#111115] rounded-2xl border border-red-900/50 p-5 shadow-[0_0_20px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex justify-between mb-3 items-center">
+                      <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
+                        ⚠️ {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
+                      </span>
+                      <button
+                        onClick={handleAudioBroadcast}
+                        className="px-2.5 py-1 bg-red-950/80 hover:bg-red-900 transition-colors border border-red-800 text-red-200 text-xs rounded-lg font-mono flex items-center gap-2"
+                      >
+                        🔊 {t.speakBtn}
+                      </button>
+                    </div>
+                    <div className="p-3.5 bg-black/50 rounded-xl border border-red-900/30 text-sm text-gray-200 leading-relaxed">
+                      {analysisData?.alerts?.[language] ||
+                        "Evacuation analysis pending."}
+                    </div>
                   </div>
-                </div>
-              </div>
-              <div className="bg-[#111115] rounded-2xl border border-red-900/50 p-5 shadow-[0_0_20px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
-                <div className="flex justify-between mb-3 items-center">
-                  <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
-                    ⚠️ {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
-                  </span>
-                  <button
-                    onClick={handleAudioBroadcast}
-                    className="px-2.5 py-1 bg-red-950/80 hover:bg-red-900 transition-colors border border-red-800 text-red-200 text-xs rounded-lg font-mono flex items-center gap-2"
-                  >
-                    🔊 {t.speakBtn}
-                  </button>
-                </div>
-                <div className="p-3.5 bg-black/50 rounded-xl border border-red-900/30 text-sm text-gray-200 leading-relaxed">
-                  {analysisData?.alerts?.[language]}
-                </div>
-              </div>
+                </>
+              )}
             </>
           )}
         </div>
@@ -511,7 +515,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {analysisData && (
+          {analysisData && !analysisData._rawSchemaDrift && (
             <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 space-y-5 shadow-xl animate-in fade-in slide-in-from-bottom-4">
               <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">
                 {t.aiReasoning}
@@ -520,26 +524,25 @@ export default function Dashboard() {
                 <div className="flex gap-2">
                   <span className="text-blue-400">1.</span>{" "}
                   <span>
-                    {analysisData?.reasoningChain?.visualBenchmark?.[language]}
+                    {analysisData?.reasoningChain?.visualBenchmark?.[
+                      language
+                    ] || "Processing telemetry..."}
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400">2.</span>{" "}
                   <span>
-                    {
-                      analysisData?.reasoningChain?.hydrodynamicForces?.[
-                        language
-                      ]
-                    }
+                    {analysisData?.reasoningChain?.hydrodynamicForces?.[
+                      language
+                    ] || "Calculating flow rates..."}
                   </span>
                 </div>
                 <div className="flex gap-2">
                   <span className="text-blue-400">3.</span>{" "}
                   <span>
-                    {
-                      analysisData?.reasoningChain
-                        ?.predictiveEvacuationWindow?.[language]
-                    }
+                    {analysisData?.reasoningChain?.predictiveEvacuationWindow?.[
+                      language
+                    ] || "Evaluating risk vectors..."}
                   </span>
                 </div>
               </div>
@@ -549,8 +552,8 @@ export default function Dashboard() {
                   {t.fieldActions}
                 </h4>
                 <ul className="space-y-2 text-xs font-mono text-cyan-200">
-                  {analysisData?.tacticalActionPlan?.[language]?.map(
-                    (action, i) => (
+                  {(analysisData?.tacticalActionPlan?.[language] || []).map(
+                    (action: string, i: number) => (
                       <li
                         key={i}
                         className="flex gap-3 items-start bg-blue-950/20 p-2.5 rounded-lg border border-blue-900/30"
