@@ -141,10 +141,9 @@ export default function Dashboard() {
         
         CRITICAL INSTRUCTIONS:
         1. Output ONE fully complete JSON object. NEVER truncate the output.
-        2. DO NOT use brackets like { } anywhere in your reasoning text or for math units. Use brackets ONLY for the JSON payload.
-        3. Do not write conversational markdown.
+        2. DO NOT use conversational text or markdown before or after the JSON.
+        3. The JSON must START exactly with the key "estimatedWaterLevelMeters".
         
-        Use this exact schema structure:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -157,17 +156,17 @@ export default function Dashboard() {
           "locationName": "Lokoja Basin",
           "coordinates": { "lat": 7.7969, "lng": 6.7333 },
           "reasoningChain": {
-            "visualBenchmark": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" },
-            "hydrodynamicForces": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" },
-            "predictiveEvacuationWindow": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" }
+            "visualBenchmark": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
+            "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
+            "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
           },
           "tacticalActionPlan": {
-            "english": ["Action 1", "Action 2"],
-            "pidgin": ["Action 1", "Action 2"],
-            "yoruba": ["Action 1", "Action 2"],
-            "igbo": ["Action 1", "Action 2"]
+            "english": ["..."],
+            "pidgin": ["..."],
+            "yoruba": ["..."],
+            "igbo": ["..."]
           },
-          "alerts": { "english": "Alert", "pidgin": "Alert", "yoruba": "Alert", "igbo": "Alert" }
+          "alerts": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
         }
       `;
 
@@ -203,17 +202,25 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ FIX: Ultra-strict JSON Extractor that ignores math brackets
+      // ⚡ ANCHORED EXTRACTOR: Ignores all chatter and targets the exact start of the main object
       const extractValidJSON = (text: string) => {
-        // Strip markdown wrappers if Gemma used them
         let cleaned = text
           .replace(/```json/gi, "")
           .replace(/```/g, "")
           .trim();
 
-        // Find the first `{` that is followed by a quote mark (e.g., `{"`), ignoring things like `{ kg/m³ }`
-        const start = cleaned.search(/\{\s*"/);
-        if (start === -1) return null;
+        // Look for the specific starting key to bypass stray {"lat": ...} outputs
+        const start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
+
+        if (start === -1) {
+          // Absolute fallback if Gemma completely changed the first key: grab first '{' to last '}'
+          const firstIdx = cleaned.indexOf("{");
+          const lastIdx = cleaned.lastIndexOf("}");
+          if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
+            return cleaned.substring(firstIdx, lastIdx + 1);
+          }
+          return null;
+        }
 
         let depth = 0;
         for (let i = start; i < cleaned.length; i++) {
@@ -243,7 +250,7 @@ export default function Dashboard() {
       else if (parsedData.analysis) parsedData = parsedData.analysis;
       else if (parsedData.data) parsedData = parsedData.data;
 
-      // Schema Drift Fallback
+      // Schema Drift Fallback Check
       if (!parsedData.status && !parsedData.hydrostaticPressureKPa) {
         parsedData._rawSchemaDrift = cleanJson;
       }
