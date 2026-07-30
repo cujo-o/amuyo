@@ -101,7 +101,7 @@ export default function Dashboard() {
     setAnalysisData(null);
 
     try {
-      // Compress image before sending to save upload time
+      // ⚡ Client-Side Canvas Image Compression
       const getBase64 = (file: File): Promise<string> => {
         return new Promise((resolve, reject) => {
           const reader = new FileReader();
@@ -130,22 +130,105 @@ export default function Dashboard() {
 
       const base64Data = await getBase64(file);
 
-      // Call the restored route.ts backend
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: base64Data }),
-      });
+      // ⚡ VERCEL BYPASS: Direct REST API call to Google Gemma 4
+      const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+      if (!apiKey)
+        throw new Error(
+          "API Key missing. Please set NEXT_PUBLIC_GEMINI_API_KEY in Vercel.",
+        );
+
+      const prompt = `
+        You are a hydrological AI. Analyze this flood image.
+        Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
+        Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
+        
+        CRITICAL: Return ONLY valid JSON matching this exact structure. Do not write conversational text or markdown:
+        {
+          "estimatedWaterLevelMeters": 1.2,
+          "hydrostaticPressureKPa": 11.7,
+          "waveVelocityMs": 1.5,
+          "submergedStructuralPercentage": 45,
+          "riskScore": 8,
+          "status": "CRITICAL",
+          "electricalHazardLevel": "SEVERE",
+          "vehicleAccessClass": "HIGH_CLEARANCE_ONLY",
+          "locationName": "Lokoja Basin",
+          "coordinates": { "lat": 7.7969, "lng": 6.7333 },
+          "reasoningChain": {
+            "visualBenchmark": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
+            "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
+            "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+          },
+          "tacticalActionPlan": {
+            "english": ["..."],
+            "pidgin": ["..."],
+            "yoruba": ["..."],
+            "igbo": ["..."]
+          },
+          "alerts": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+        }
+      `;
+
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: prompt },
+                  {
+                    inlineData: {
+                      mimeType: file.type || "image/jpeg",
+                      data: base64Data,
+                    },
+                  },
+                ],
+              },
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              responseMimeType: "application/json",
+            },
+          }),
+        },
+      );
 
       const responseData = await res.json();
 
       if (!res.ok) {
-        throw new Error(responseData.error || "Server Error");
+        throw new Error(responseData.error?.message || "Google API Error");
       }
 
-      setAnalysisData(responseData);
+      const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      if (responseData.riskScore >= 7 || responseData.status === "CRITICAL") {
+      // ⚡ BULLETPROOF JSON EXTRACTOR
+      const extractValidJSON = (text: string) => {
+        const start = text.indexOf("{");
+        if (start === -1) return null;
+        let depth = 0;
+        for (let i = start; i < text.length; i++) {
+          if (text[i] === "{") depth++;
+          else if (text[i] === "}") {
+            depth--;
+            if (depth === 0) return text.substring(start, i + 1);
+          }
+        }
+        return null;
+      };
+
+      const cleanJson = extractValidJSON(textResponse);
+
+      if (!cleanJson) {
+        throw new Error("Could not extract valid JSON from Gemma's response.");
+      }
+
+      const analysis: FloodAnalysis = JSON.parse(cleanJson);
+      setAnalysisData(analysis);
+
+      if (analysis.riskScore >= 7 || analysis.status === "CRITICAL") {
         setShowEmergencyModal(true);
       }
     } catch (error: any) {
@@ -402,7 +485,6 @@ export default function Dashboard() {
                     🔊 {t.speakBtn}
                   </button>
                 </div>
-                {/* Fallbacks removed: it will now display real data or show nothing if Gemma fails to supply it */}
                 <div className="p-3.5 bg-black/50 rounded-xl border border-red-900/30 text-sm text-gray-200 leading-relaxed">
                   {analysisData?.alerts?.[language]}
                 </div>
