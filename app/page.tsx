@@ -142,7 +142,7 @@ export default function Dashboard() {
         CRITICAL INSTRUCTIONS:
         1. Output ONE fully complete JSON object. NEVER truncate the output.
         2. DO NOT use conversational text or markdown before or after the JSON.
-        3. The JSON must START exactly with the key "estimatedWaterLevelMeters".
+        3. Keep all reasoning strings to ONE brief sentence.
         
         {
           "estimatedWaterLevelMeters": 1.2,
@@ -202,33 +202,41 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ ANCHORED EXTRACTOR: Ignores all chatter and targets the exact start of the main object
+      // ⚡ THE INDESTRUCTIBLE EXTRACTOR: Scans everywhere, tests validity, and ignores math junk
       const extractValidJSON = (text: string) => {
-        let cleaned = text
-          .replace(/```json/gi, "")
-          .replace(/```/g, "")
-          .trim();
-
-        // Look for the specific starting key to bypass stray {"lat": ...} outputs
-        const start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
-
-        if (start === -1) {
-          // Absolute fallback if Gemma completely changed the first key: grab first '{' to last '}'
-          const firstIdx = cleaned.indexOf("{");
-          const lastIdx = cleaned.lastIndexOf("}");
-          if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
-            return cleaned.substring(firstIdx, lastIdx + 1);
+        let startIndex = text.indexOf("{");
+        while (startIndex !== -1) {
+          let depth = 0;
+          for (let i = startIndex; i < text.length; i++) {
+            if (text[i] === "{") depth++;
+            else if (text[i] === "}") {
+              depth--;
+              if (depth === 0) {
+                const candidate = text.substring(startIndex, i + 1);
+                try {
+                  const parsed = JSON.parse(candidate);
+                  // Verify this is our main payload and not a random { lat: 0, lng: 0 } or { kg/m3 } string
+                  const p =
+                    parsed.data ||
+                    parsed.analysis ||
+                    parsed.floodAnalysis ||
+                    parsed;
+                  if (
+                    p.riskScore !== undefined ||
+                    p.status ||
+                    p.estimatedWaterLevelMeters ||
+                    p.tacticalActionPlan
+                  ) {
+                    return candidate;
+                  }
+                } catch (e) {
+                  // Ignore invalid JSON blocks silently
+                }
+                break; // Break the inner loop, move to search for the next '{'
+              }
+            }
           }
-          return null;
-        }
-
-        let depth = 0;
-        for (let i = start; i < cleaned.length; i++) {
-          if (cleaned[i] === "{") depth++;
-          else if (cleaned[i] === "}") {
-            depth--;
-            if (depth === 0) return cleaned.substring(start, i + 1);
-          }
+          startIndex = text.indexOf("{", startIndex + 1);
         }
         return null;
       };
@@ -236,21 +244,23 @@ export default function Dashboard() {
       const cleanJson = extractValidJSON(textResponse);
 
       if (!cleanJson) {
+        // If we still can't extract it, log it to the console so we can see what Gemma hallucinated
+        console.error("Gemma's Raw Output:", textResponse);
         throw new Error(
-          "Could not extract valid JSON from Gemma's response. Retrying might help.",
+          "Gemma AI outputted an invalid response format. Please hit Analyze again.",
         );
       }
 
-      console.log("RAW GEMMA OUTPUT:", cleanJson);
+      console.log("SUCCESSFULLY PARSED GEMMA OUTPUT:", cleanJson);
 
       let parsedData = JSON.parse(cleanJson);
 
-      // Auto-Unwrapper
+      // Auto-Unwrapper (handles schema drift)
       if (parsedData.floodAnalysis) parsedData = parsedData.floodAnalysis;
       else if (parsedData.analysis) parsedData = parsedData.analysis;
       else if (parsedData.data) parsedData = parsedData.data;
 
-      // Schema Drift Fallback Check
+      // Schema Drift Fallback UI Check
       if (!parsedData.status && !parsedData.hydrostaticPressureKPa) {
         parsedData._rawSchemaDrift = cleanJson;
       }
