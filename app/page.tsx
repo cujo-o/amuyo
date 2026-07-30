@@ -197,7 +197,7 @@ export default function Dashboard() {
             ],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 4096, // ⚡ FIX: Forces Gemma to output the entire JSON block without cutting off halfway!
+              maxOutputTokens: 4096,
             },
           }),
         },
@@ -422,39 +422,58 @@ export default function Dashboard() {
             )}
           </div>
 
-          {!analysisData && !loading && (
-            <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl animate-in fade-in slide-in-from-bottom-4">
-              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                System Status
-              </h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-white/5">
-                  <span className="text-xs font-mono text-gray-400">
-                    Location:
+          <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+              System Status
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-mono text-gray-400">
+                  Location:
+                </span>
+                {locationEnabled ? (
+                  <span className="text-xs font-mono text-green-400 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>{" "}
+                    CONNECTED
                   </span>
-                  {locationEnabled ? (
-                    <span className="text-xs font-mono text-green-400 font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>{" "}
-                      CONNECTED
-                    </span>
-                  ) : (
-                    <span className="text-xs font-mono text-red-400 font-bold flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>{" "}
-                      DISCONNECTED
-                    </span>
-                  )}
-                </div>
-                <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                  <span className="text-xs font-mono text-gray-400 block mb-1">
-                    Current Weather:
+                ) : (
+                  <span className="text-xs font-mono text-red-400 font-bold flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>{" "}
+                    DISCONNECTED
                   </span>
-                  <span className="text-xs font-mono text-cyan-200">
-                    {weatherSummary}
-                  </span>
-                </div>
+                )}
               </div>
+              <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                <span className="text-xs font-mono text-gray-400 block mb-1">
+                  Current Weather:
+                </span>
+                <span className="text-xs font-mono text-cyan-200">
+                  {weatherSummary}
+                </span>
+              </div>
+
+              {!analysisData && !loading && (
+                <div className="p-4 border border-blue-900/30 bg-blue-950/10 rounded-xl mt-2">
+                  <h4 className="text-xs font-bold text-blue-400 mb-1">
+                    What to do next
+                  </h4>
+                  <p className="text-xs text-gray-400 leading-relaxed mb-3">
+                    Please upload a photo of the flooded area to begin the
+                    analysis.
+                  </p>
+                  <button
+                    onClick={() => setActiveTab("MAP")}
+                    className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 group"
+                  >
+                    <span className="group-hover:translate-x-1 transition-transform">
+                      &rarr;
+                    </span>{" "}
+                    Open Hazard Map
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {analysisData && (
             <>
@@ -474,6 +493,22 @@ export default function Dashboard() {
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
+                      <span className="text-xs text-gray-400">Water Depth</span>
+                      <div className="text-xl font-bold font-mono text-white mt-1">
+                        {analysisData?.estimatedWaterLevelMeters || "0.0"}{" "}
+                        <span className="text-xs text-blue-400">m</span>
+                      </div>
+                    </div>
+                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
+                      <span className="text-xs text-gray-400">
+                        Structural Damage
+                      </span>
+                      <div className="text-xl font-bold font-mono text-yellow-400 mt-1">
+                        {analysisData?.submergedStructuralPercentage || "0"}{" "}
+                        <span className="text-xs text-yellow-600">%</span>
+                      </div>
+                    </div>
                     <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
                       <span className="text-xs text-gray-400">
                         {t.waterPressure}
