@@ -142,7 +142,9 @@ export default function Dashboard() {
         Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
         Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
         
-        CRITICAL: Return ONLY valid JSON matching this exact structure. Do not write conversational text or markdown:
+        CRITICAL SPEED CONSTRAINT: Output ONLY the RAW JSON object immediately. DO NOT use conversational text, introductory remarks, or markdown. Keep reasoning and action plans to ONE concise sentence.
+        
+        Return ONLY valid JSON matching this exact structure:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -204,28 +206,18 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ BULLETPROOF JSON EXTRACTOR
-      const extractValidJSON = (text: string) => {
-        const start = text.indexOf("{");
-        if (start === -1) return null;
-        let depth = 0;
-        for (let i = start; i < text.length; i++) {
-          if (text[i] === "{") depth++;
-          else if (text[i] === "}") {
-            depth--;
-            if (depth === 0) return text.substring(start, i + 1);
-          }
-        }
-        return null;
-      };
+      // ⚡ ROBUST JSON EXTRACTION: Scans past Gemma's conversational markdown and isolates the exact JSON block
+      const jsonMatch = textResponse.match(/\{[\s\S]*\}/);
 
-      const cleanJson = extractValidJSON(textResponse);
-
-      if (!cleanJson) {
-        throw new Error("Could not extract valid JSON from Gemma's response.");
+      if (!jsonMatch) {
+        throw new Error(
+          "Could not extract balanced JSON from Gemma's response. Retrying might help.",
+        );
       }
 
+      const cleanJson = jsonMatch[0];
       const analysis: FloodAnalysis = JSON.parse(cleanJson);
+
       setAnalysisData(analysis);
 
       if (analysis.riskScore >= 7 || analysis.status === "CRITICAL") {
