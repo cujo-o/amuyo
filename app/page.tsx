@@ -134,14 +134,13 @@ export default function Dashboard() {
           "API Key missing. Please set NEXT_PUBLIC_GEMINI_API_KEY in Vercel.",
         );
 
-      // ⚡ FIX: We move all rules into a dedicated System Instruction
       const systemPrompt = `
         You are a highly advanced hydrological AI. Your singular purpose is to extract flood metrics from images.
         
         CRITICAL RULES:
         1. You MUST output ONLY a valid JSON object. 
-        2. DO NOT use markdown formatting, conversational text, or bullet points under any circumstances.
-        3. Keep all reasoning strings to ONE brief sentence.
+        2. DO NOT use markdown formatting, conversational text, or bullet points.
+        3. Ensure all keys and nested objects are fully populated. NEVER truncate the output.
         
         Use this EXACT JSON schema:
         {
@@ -156,23 +155,22 @@ export default function Dashboard() {
           "locationName": "Lokoja Basin",
           "coordinates": { "lat": 7.7969, "lng": 6.7333 },
           "reasoningChain": {
-            "visualBenchmark": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
-            "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
-            "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+            "visualBenchmark": { "english": "Water is at window level", "pidgin": "Water don reach window", "yoruba": "Omi ti de ferese", "igbo": "Mmiri eruola na windo" },
+            "hydrodynamicForces": { "english": "Currents are strong", "pidgin": "Water get force", "yoruba": "Omi lagbara", "igbo": "Mmiri siri ike" },
+            "predictiveEvacuationWindow": { "english": "Evacuate immediately", "pidgin": "Comot now", "yoruba": "Kuro nibe bayi", "igbo": "Pụọ ozugbo" }
           },
           "tacticalActionPlan": {
-            "english": ["..."],
-            "pidgin": ["..."],
-            "yoruba": ["..."],
-            "igbo": ["..."]
+            "english": ["Isolate power", "Deploy boats"],
+            "pidgin": ["Off light", "Bring boat"],
+            "yoruba": ["Pa ina", "Gbe oko omi wa"],
+            "igbo": ["Gbanyuo ọkụ", "Weta ụgbọ mmiri"]
           },
-          "alerts": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+          "alerts": { "english": "Evacuate!", "pidgin": "Comot there!", "yoruba": "Kuro nibe!", "igbo": "Pụọ ebe ahụ!" }
         }
       `;
 
-      // The User Prompt is now incredibly simple
       const userPrompt =
-        "Analyze this flood image and output the required JSON analysis.";
+        "Analyze this flood image and output the full, complete JSON analysis. Do not stop until all keys are filled.";
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`,
@@ -180,7 +178,6 @@ export default function Dashboard() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            // ⚡ FIX: Passing the strict rules as a native System Instruction
             systemInstruction: {
               parts: [{ text: systemPrompt }],
             },
@@ -200,6 +197,7 @@ export default function Dashboard() {
             ],
             generationConfig: {
               temperature: 0.1,
+              maxOutputTokens: 4096, // ⚡ FIX: Forces Gemma to output the entire JSON block without cutting off halfway!
             },
           }),
         },
