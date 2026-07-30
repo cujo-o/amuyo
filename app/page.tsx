@@ -33,7 +33,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"3D" | "MAP">("3D");
   const [isLangModalOpen, setIsLangModalOpen] = useState<boolean>(false);
 
-  // Interactive Location State
   const [locationEnabled, setLocationEnabled] = useState<boolean>(false);
   const [userCoords, setUserCoords] = useState<{
     lat: number;
@@ -140,9 +139,12 @@ export default function Dashboard() {
         Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
         Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
         
-        CRITICAL INSTRUCTION: Output ONLY the RAW JSON object. DO NOT wrap the JSON in a parent key like "data" or "analysis". 
-        Do not use conversational text or markdown. Replace the "..." placeholders with your actual generated text.
+        CRITICAL INSTRUCTIONS:
+        1. Output ONE fully complete JSON object. NEVER truncate the output.
+        2. DO NOT use brackets like { } anywhere in your reasoning text or for math units. Use brackets ONLY for the JSON payload.
+        3. Do not write conversational markdown.
         
+        Use this exact schema structure:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -155,17 +157,17 @@ export default function Dashboard() {
           "locationName": "Lokoja Basin",
           "coordinates": { "lat": 7.7969, "lng": 6.7333 },
           "reasoningChain": {
-            "visualBenchmark": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
-            "hydrodynamicForces": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." },
-            "predictiveEvacuationWindow": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+            "visualBenchmark": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" },
+            "hydrodynamicForces": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" },
+            "predictiveEvacuationWindow": { "english": "Generated text", "pidgin": "Generated text", "yoruba": "Generated text", "igbo": "Generated text" }
           },
           "tacticalActionPlan": {
-            "english": ["..."],
-            "pidgin": ["..."],
-            "yoruba": ["..."],
-            "igbo": ["..."]
+            "english": ["Action 1", "Action 2"],
+            "pidgin": ["Action 1", "Action 2"],
+            "yoruba": ["Action 1", "Action 2"],
+            "igbo": ["Action 1", "Action 2"]
           },
-          "alerts": { "english": "...", "pidgin": "...", "yoruba": "...", "igbo": "..." }
+          "alerts": { "english": "Alert", "pidgin": "Alert", "yoruba": "Alert", "igbo": "Alert" }
         }
       `;
 
@@ -188,9 +190,8 @@ export default function Dashboard() {
                 ],
               },
             ],
-            // ⚡ FIX 1: Removed responseMimeType so Google's server doesn't throw a 500 error
             generationConfig: {
-              temperature: 0.2,
+              temperature: 0.1,
             },
           }),
         },
@@ -202,16 +203,24 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ FIX 2: Bulletproof JSON Extractor to prevent "Unexpected token" errors
+      // ⚡ FIX: Ultra-strict JSON Extractor that ignores math brackets
       const extractValidJSON = (text: string) => {
-        const start = text.indexOf("{");
+        // Strip markdown wrappers if Gemma used them
+        let cleaned = text
+          .replace(/```json/gi, "")
+          .replace(/```/g, "")
+          .trim();
+
+        // Find the first `{` that is followed by a quote mark (e.g., `{"`), ignoring things like `{ kg/m³ }`
+        const start = cleaned.search(/\{\s*"/);
         if (start === -1) return null;
+
         let depth = 0;
-        for (let i = start; i < text.length; i++) {
-          if (text[i] === "{") depth++;
-          else if (text[i] === "}") {
+        for (let i = start; i < cleaned.length; i++) {
+          if (cleaned[i] === "{") depth++;
+          else if (cleaned[i] === "}") {
             depth--;
-            if (depth === 0) return text.substring(start, i + 1);
+            if (depth === 0) return cleaned.substring(start, i + 1);
           }
         }
         return null;
@@ -220,20 +229,21 @@ export default function Dashboard() {
       const cleanJson = extractValidJSON(textResponse);
 
       if (!cleanJson) {
-        throw new Error("Could not extract valid JSON from Gemma's response.");
+        throw new Error(
+          "Could not extract valid JSON from Gemma's response. Retrying might help.",
+        );
       }
 
-      // ⚡ DEBUGGING: Look at this in your browser console (F12) to see what Gemma actually wrote
       console.log("RAW GEMMA OUTPUT:", cleanJson);
 
       let parsedData = JSON.parse(cleanJson);
 
-      // 🛡️ AUTO-UNWRAPPER: If Gemma hides the data inside a parent key, automatically extract it
+      // Auto-Unwrapper
       if (parsedData.floodAnalysis) parsedData = parsedData.floodAnalysis;
       else if (parsedData.analysis) parsedData = parsedData.analysis;
       else if (parsedData.data) parsedData = parsedData.data;
 
-      // 🛡️ SCHEMA DRIFT FALLBACK: If standard keys are still completely missing, attach the raw JSON string
+      // Schema Drift Fallback
       if (!parsedData.status && !parsedData.hydrostaticPressureKPa) {
         parsedData._rawSchemaDrift = cleanJson;
       }
@@ -265,7 +275,6 @@ export default function Dashboard() {
 
   return (
     <main className="min-h-screen bg-[#070709] text-gray-100 font-sans pb-12 relative overflow-x-hidden">
-      {/* EMERGENCY MODAL */}
       {showEmergencyModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-all">
           <div className="bg-[#0c0c0e] border border-red-900/50 rounded-2xl w-full max-w-md p-6 shadow-[0_0_80px_rgba(255,0,60,0.25)] animate-in zoom-in-95 duration-300">
@@ -299,7 +308,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* NAV BAR */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0c0c0f]/90 backdrop-blur-md sticky top-0 z-50">
         <div>
           <h1 className="text-xl font-bold tracking-wider text-white">
@@ -361,7 +369,6 @@ export default function Dashboard() {
       </nav>
 
       <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* LEFT COLUMN */}
         <div className="lg:col-span-5 flex flex-col gap-6">
           <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl">
             <h2 className="text-sm font-bold text-white mb-1">
@@ -442,7 +449,6 @@ export default function Dashboard() {
 
           {analysisData && (
             <>
-              {/* 🛡️ SCHEMA DRIFT FALLBACK UI: Displays if standard keys fail */}
               {analysisData._rawSchemaDrift ? (
                 <div className="bg-red-950/20 border border-red-900/50 rounded-2xl p-5 shadow-xl animate-in fade-in">
                   <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
@@ -502,7 +508,6 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* RIGHT COLUMN */}
         <div className="lg:col-span-7 flex flex-col gap-6">
           <div className="bg-[#111115] rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[460px] shadow-xl">
             <div className="flex border-b border-white/10 bg-[#0a0a0d]">
