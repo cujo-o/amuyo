@@ -134,16 +134,16 @@ export default function Dashboard() {
           "API Key missing. Please set NEXT_PUBLIC_GEMINI_API_KEY in Vercel.",
         );
 
-      const prompt = `
-        You are a hydrological AI. Analyze this flood image.
-        Extract hydrological metrics (Depth in meters, Hydrostatic pressure in kPa).
-        Generate reasoning logs and tactical action plans in English, Pidgin, Yoruba, and Igbo.
+      // ⚡ FIX: We move all rules into a dedicated System Instruction
+      const systemPrompt = `
+        You are a highly advanced hydrological AI. Your singular purpose is to extract flood metrics from images.
         
-        CRITICAL INSTRUCTIONS:
-        1. Output ONE fully complete JSON object. NEVER truncate the output.
-        2. DO NOT use conversational text or markdown before or after the JSON.
+        CRITICAL RULES:
+        1. You MUST output ONLY a valid JSON object. 
+        2. DO NOT use markdown formatting, conversational text, or bullet points under any circumstances.
         3. Keep all reasoning strings to ONE brief sentence.
         
+        Use this EXACT JSON schema:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -170,16 +170,25 @@ export default function Dashboard() {
         }
       `;
 
+      // The User Prompt is now incredibly simple
+      const userPrompt =
+        "Analyze this flood image and output the required JSON analysis.";
+
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
+            // ⚡ FIX: Passing the strict rules as a native System Instruction
+            systemInstruction: {
+              parts: [{ text: systemPrompt }],
+            },
             contents: [
               {
+                role: "user",
                 parts: [
-                  { text: prompt },
+                  { text: userPrompt },
                   {
                     inlineData: {
                       mimeType: file.type || "image/jpeg",
@@ -202,41 +211,29 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ THE INDESTRUCTIBLE EXTRACTOR: Scans everywhere, tests validity, and ignores math junk
       const extractValidJSON = (text: string) => {
-        let startIndex = text.indexOf("{");
-        while (startIndex !== -1) {
-          let depth = 0;
-          for (let i = startIndex; i < text.length; i++) {
-            if (text[i] === "{") depth++;
-            else if (text[i] === "}") {
-              depth--;
-              if (depth === 0) {
-                const candidate = text.substring(startIndex, i + 1);
-                try {
-                  const parsed = JSON.parse(candidate);
-                  // Verify this is our main payload and not a random { lat: 0, lng: 0 } or { kg/m3 } string
-                  const p =
-                    parsed.data ||
-                    parsed.analysis ||
-                    parsed.floodAnalysis ||
-                    parsed;
-                  if (
-                    p.riskScore !== undefined ||
-                    p.status ||
-                    p.estimatedWaterLevelMeters ||
-                    p.tacticalActionPlan
-                  ) {
-                    return candidate;
-                  }
-                } catch (e) {
-                  // Ignore invalid JSON blocks silently
-                }
-                break; // Break the inner loop, move to search for the next '{'
-              }
-            }
+        let cleaned = text
+          .replace(/```json/gi, "")
+          .replace(/```/g, "")
+          .trim();
+        const start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
+
+        if (start === -1) {
+          const firstIdx = cleaned.indexOf("{");
+          const lastIdx = cleaned.lastIndexOf("}");
+          if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
+            return cleaned.substring(firstIdx, lastIdx + 1);
           }
-          startIndex = text.indexOf("{", startIndex + 1);
+          return null;
+        }
+
+        let depth = 0;
+        for (let i = start; i < cleaned.length; i++) {
+          if (cleaned[i] === "{") depth++;
+          else if (cleaned[i] === "}") {
+            depth--;
+            if (depth === 0) return cleaned.substring(start, i + 1);
+          }
         }
         return null;
       };
@@ -244,7 +241,6 @@ export default function Dashboard() {
       const cleanJson = extractValidJSON(textResponse);
 
       if (!cleanJson) {
-        // If we still can't extract it, log it to the console so we can see what Gemma hallucinated
         console.error("Gemma's Raw Output:", textResponse);
         throw new Error(
           "Gemma AI outputted an invalid response format. Please hit Analyze again.",
@@ -255,12 +251,10 @@ export default function Dashboard() {
 
       let parsedData = JSON.parse(cleanJson);
 
-      // Auto-Unwrapper (handles schema drift)
       if (parsedData.floodAnalysis) parsedData = parsedData.floodAnalysis;
       else if (parsedData.analysis) parsedData = parsedData.analysis;
       else if (parsedData.data) parsedData = parsedData.data;
 
-      // Schema Drift Fallback UI Check
       if (!parsedData.status && !parsedData.hydrostaticPressureKPa) {
         parsedData._rawSchemaDrift = cleanJson;
       }
