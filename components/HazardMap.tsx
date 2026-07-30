@@ -12,11 +12,20 @@ import {
 import L from "leaflet";
 import { FloodAnalysis } from "@/types";
 
-export default function HazardMap({ data }: { data: FloodAnalysis | null }) {
+// 1. Accept userCoords as a prop
+export default function HazardMap({
+  data,
+  userCoords,
+}: {
+  data: FloodAnalysis | null;
+  userCoords?: { lat: number; lng: number } | null;
+}) {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
 
-  const lat = data?.coordinates?.lat || 7.7969;
-  const lng = data?.coordinates?.lng || 6.7333;
+  // 2. Prioritize real device GPS -> fallback to AI -> fallback to default
+  const lat = userCoords?.lat || data?.coordinates?.lat || 7.7969;
+  const lng = userCoords?.lng || data?.coordinates?.lng || 6.7333;
+
   const riskColor = (data?.riskScore || 1) >= 7 ? "#ff003c" : "#ffaa00";
 
   // Safe zone ~2.5km away
@@ -63,6 +72,7 @@ export default function HazardMap({ data }: { data: FloodAnalysis | null }) {
   return (
     <div className="w-full h-full min-h-[420px] bg-[#0c0c0e] rounded-xl overflow-hidden border border-white/5 relative">
       <MapContainer
+        key={`${lat}-${lng}`} // 3. ⚡ Forces the map to physically re-center when GPS updates
         center={[lat + 0.01, lng + 0.01]}
         zoom={13}
         scrollWheelZoom={false}
