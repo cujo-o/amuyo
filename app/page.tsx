@@ -134,13 +134,11 @@ export default function Dashboard() {
           "API Key missing. Please set NEXT_PUBLIC_GEMINI_API_KEY in Vercel.",
         );
 
-      // ⚡ FIX: Ultra-strict System Prompt
       const systemPrompt = `
         You are a rigid data-extraction API. You do not speak. You do not use markdown. 
         You output ONLY raw, valid JSON starting with { and ending with }. DO NOT output bullet points.
       `;
 
-      // ⚡ FIX: Moving the schema directly into the User Prompt forces Gemma to pay attention to it
       const userPrompt = `
         Analyze this flood image.
         
@@ -195,8 +193,8 @@ export default function Dashboard() {
               },
             ],
             generationConfig: {
-              temperature: 0.1, // ⚡ FIX: Bumped to 0.1 to prevent it from getting stuck in repetitive markdown loops
-              maxOutputTokens: 1024,
+              temperature: 0.1,
+              maxOutputTokens: 2048, // ⚡ Increased token limit to ensure JSON completes
             },
           }),
         },
@@ -208,29 +206,40 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
+      // ⚡ THE INDESTRUCTIBLE EXTRACTOR: Evaluates every single '{' block to find the real analysis
       const extractValidJSON = (text: string) => {
         let cleaned = text
           .replace(/```json/gi, "")
           .replace(/```/g, "")
           .trim();
-        let start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
+        let startIndex = cleaned.indexOf("{");
 
-        // Absolute fallback: just find the first opening brace
-        if (start === -1) {
-          start = cleaned.indexOf("{");
-        }
-
-        if (start === -1) {
-          return null; // No brackets found at all
-        }
-
-        let depth = 0;
-        for (let i = start; i < cleaned.length; i++) {
-          if (cleaned[i] === "{") depth++;
-          else if (cleaned[i] === "}") {
-            depth--;
-            if (depth === 0) return cleaned.substring(start, i + 1);
+        while (startIndex !== -1) {
+          let depth = 0;
+          for (let i = startIndex; i < cleaned.length; i++) {
+            if (cleaned[i] === "{") depth++;
+            else if (cleaned[i] === "}") {
+              depth--;
+              if (depth === 0) {
+                const candidate = cleaned.substring(startIndex, i + 1);
+                try {
+                  const parsed = JSON.parse(candidate);
+                  // 🛡️ Ensure this isn't a stray {"lat":0, "lng":0} block! It must contain our core keys.
+                  if (
+                    parsed.estimatedWaterLevelMeters !== undefined ||
+                    parsed.tacticalActionPlan ||
+                    parsed.status
+                  ) {
+                    return candidate;
+                  }
+                } catch (e) {
+                  // Ignore invalid or malformed JSON blocks silently
+                }
+                break; // Break the inner loop, jump to search for the next '{'
+              }
+            }
           }
+          startIndex = cleaned.indexOf("{", startIndex + 1);
         }
         return null;
       };
