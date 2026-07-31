@@ -19,7 +19,7 @@ Amuyo relies exclusively on **Gemma 4** (`gemma-4-26b-a4b-it`) as its central hy
 * **Balanced JSON Extraction:** The system uses a mathematically robust, custom-built extraction algorithm to guarantee Gemma returns strict `application/json` data for the Next.js frontend, bypassing conversational markdown.
 * **Native Multilingual Routing:** Gemma simultaneously synthesizes tactical action plans and public warnings in English, Nigerian Pidgin, Yorùbá, and Igbo.
 
-## 🚀 Technical Architecture & Speed Optimizations
+## Technical Architecture & Speed Optimizations
 To ensure the system works reliably in low-bandwidth disaster scenarios and bypasses standard serverless timeouts, Amuyo is heavily optimized:
 
 * **Edge Runtime Inference:** The API route operates on Vercel's Edge network, entirely eliminating Node.js cold-start delays.
@@ -27,13 +27,13 @@ To ensure the system works reliably in low-bandwidth disaster scenarios and bypa
 * **Dynamic 3D Rendering:** Uses React Three Fiber and Three.js to construct an abstract 3D visualizer that dynamically updates based on the water level (`estimatedWaterLevelMeters`) and risk score determined by Gemma.
 * **Live Telemetry:** Integrates the Open-Meteo API for real-time precipitation tracking and HTML5 Geolocation to ground the predictive evacuation windows in reality.
 
-## 🛠️ Tech Stack
+## Tech Stack
 * **Frontend:** Next.js (App Router), React, Tailwind CSS
 * **3D Visualization:** React Three Fiber / Three.js
 * **Geospatial Radar:** React-Leaflet & Open Source Routing Machine (OSRM)
 * **AI Engine:** Google Gemma 4 via `@google/genai` SDK
 
-## ⚙️ Local Setup Instructions
+## Local Setup Instructions
 
 1. **Clone the repository:**
    ```bash
@@ -52,7 +52,7 @@ To ensure the system works reliably in low-bandwidth disaster scenarios and bypa
 
  * Initialize System:
    Open http://localhost:3000 in your browser. Allow location permissions to enable live weather and GPS matrix tracking.
-📱 Usage Guide
+ Usage Guide
  * Launch the application and observe the System Status Matrix to verify GPS and weather uplinks.
  * Tap the upload module and select an image of a flooded environment.
  * The system will compress the image and run the Gemma 4 multimodal analysis.
