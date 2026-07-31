@@ -109,7 +109,6 @@ export default function Dashboard() {
             img.src = event.target?.result as string;
             img.onload = () => {
               const canvas = document.createElement("canvas");
-              // ⚡ SPEED OPTIMIZATION: 640px is the perfect balance of detail and minimal token weight
               const MAX_WIDTH = 640;
               const scaleSize = MAX_WIDTH / img.width;
               canvas.width = MAX_WIDTH;
@@ -135,15 +134,17 @@ export default function Dashboard() {
           "API Key missing. Please set NEXT_PUBLIC_GEMINI_API_KEY in Vercel.",
         );
 
+      // ⚡ FIX: Ultra-strict System Prompt
       const systemPrompt = `
-        You are a highly advanced hydrological AI. Your singular purpose is to extract flood metrics from images.
+        You are a rigid data-extraction API. You do not speak. You do not use markdown. 
+        You output ONLY raw, valid JSON starting with { and ending with }. DO NOT output bullet points.
+      `;
+
+      // ⚡ FIX: Moving the schema directly into the User Prompt forces Gemma to pay attention to it
+      const userPrompt = `
+        Analyze this flood image.
         
-        CRITICAL RULES:
-        1. You MUST output ONLY a valid JSON object. 
-        2. DO NOT use markdown formatting, conversational text, or bullet points.
-        3. Keep all reasoning chains ultra-short (max 8 words).
-        
-        Use this EXACT JSON schema:
+        You MUST return your analysis using exactly this JSON structure. Do not use bullet points or extra text:
         {
           "estimatedWaterLevelMeters": 1.2,
           "hydrostaticPressureKPa": 11.7,
@@ -170,9 +171,6 @@ export default function Dashboard() {
         }
       `;
 
-      const userPrompt =
-        "Analyze this flood image and output fast, brief, complete JSON.";
-
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`,
         {
@@ -197,8 +195,8 @@ export default function Dashboard() {
               },
             ],
             generationConfig: {
-              temperature: 0.0, // ⚡ Absolute zero creativity for raw speed
-              maxOutputTokens: 800, // ⚡ Tight cap to prevent AI run-on sentences
+              temperature: 0.1, // ⚡ FIX: Bumped to 0.1 to prevent it from getting stuck in repetitive markdown loops
+              maxOutputTokens: 1024,
             },
           }),
         },
@@ -215,15 +213,15 @@ export default function Dashboard() {
           .replace(/```json/gi, "")
           .replace(/```/g, "")
           .trim();
-        const start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
+        let start = cleaned.search(/\{\s*"estimatedWaterLevelMeters"/);
+
+        // Absolute fallback: just find the first opening brace
+        if (start === -1) {
+          start = cleaned.indexOf("{");
+        }
 
         if (start === -1) {
-          const firstIdx = cleaned.indexOf("{");
-          const lastIdx = cleaned.lastIndexOf("}");
-          if (firstIdx !== -1 && lastIdx !== -1 && lastIdx > firstIdx) {
-            return cleaned.substring(firstIdx, lastIdx + 1);
-          }
-          return null;
+          return null; // No brackets found at all
         }
 
         let depth = 0;
@@ -284,7 +282,6 @@ export default function Dashboard() {
   };
 
   return (
-    // 🎨 UI UPGRADE: Beautiful atmospheric dark gradient background
     <main className="min-h-screen bg-gradient-to-br from-[#050508] via-[#0e1017] to-[#050508] text-gray-100 font-sans pb-12 relative overflow-x-hidden selection:bg-blue-500/30">
       {showEmergencyModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-all">
@@ -319,10 +316,8 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* 🎨 UI UPGRADE: Glassmorphic Nav */}
       <nav className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0a0c10]/70 backdrop-blur-xl sticky top-0 z-50">
         <div>
-          {/* 🎨 UI UPGRADE: Larger, gradient glowing AMUYO title */}
           <h1 className="text-3xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500">
             {t.navTitle}
           </h1>
@@ -357,7 +352,7 @@ export default function Dashboard() {
               onClick={() => setIsLangModalOpen(!isLangModalOpen)}
               className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs font-mono text-blue-100 hover:bg-blue-900/40 transition-all shadow-lg"
             >
-              🌐 {language.toUpperCase()} ⚙️
+              {language.toUpperCase()} ⚙️
             </button>
             {isLangModalOpen && (
               <div className="absolute right-0 mt-3 w-44 bg-[#0e1017] border border-white/10 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl">
@@ -383,7 +378,6 @@ export default function Dashboard() {
 
       <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
         <div className="lg:col-span-5 flex flex-col gap-6">
-          {/* 🎨 UI UPGRADE: Cards now have subtle gradient backgrounds and softer borders */}
           <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
 
