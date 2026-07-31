@@ -8,7 +8,7 @@ import { siteTranslations } from "@/utils/translations";
 const FloodVisualizer = dynamic(() => import("@/components/FloodVisualizer"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-blue-400 animate-pulse">
+    <div className="w-full h-[350px] md:h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-blue-400 animate-pulse">
       LOADING 3D SIMULATION...
     </div>
   ),
@@ -17,7 +17,7 @@ const FloodVisualizer = dynamic(() => import("@/components/FloodVisualizer"), {
 const HazardMap = dynamic(() => import("@/components/HazardMap"), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-gray-500 animate-pulse">
+    <div className="w-full h-[350px] md:h-[420px] bg-[#0c0c0e] rounded-xl flex items-center justify-center border border-white/5 text-xs font-mono text-gray-500 animate-pulse">
       LOADING MAP...
     </div>
   ),
@@ -194,7 +194,7 @@ export default function Dashboard() {
             ],
             generationConfig: {
               temperature: 0.1,
-              maxOutputTokens: 2048, // ⚡ Increased token limit to ensure JSON completes
+              maxOutputTokens: 2048,
             },
           }),
         },
@@ -206,7 +206,6 @@ export default function Dashboard() {
 
       const textResponse = responseData.candidates[0].content.parts[0].text;
 
-      // ⚡ THE INDESTRUCTIBLE EXTRACTOR: Evaluates every single '{' block to find the real analysis
       const extractValidJSON = (text: string) => {
         let cleaned = text
           .replace(/```json/gi, "")
@@ -224,7 +223,6 @@ export default function Dashboard() {
                 const candidate = cleaned.substring(startIndex, i + 1);
                 try {
                   const parsed = JSON.parse(candidate);
-                  // 🛡️ Ensure this isn't a stray {"lat":0, "lng":0} block! It must contain our core keys.
                   if (
                     parsed.estimatedWaterLevelMeters !== undefined ||
                     parsed.tacticalActionPlan ||
@@ -232,10 +230,8 @@ export default function Dashboard() {
                   ) {
                     return candidate;
                   }
-                } catch (e) {
-                  // Ignore invalid or malformed JSON blocks silently
-                }
-                break; // Break the inner loop, jump to search for the next '{'
+                } catch (e) {}
+                break;
               }
             }
           }
@@ -252,8 +248,6 @@ export default function Dashboard() {
           "Gemma AI outputted an invalid response format. Please hit Analyze again.",
         );
       }
-
-      console.log("SUCCESSFULLY PARSED GEMMA OUTPUT:", cleanJson);
 
       let parsedData = JSON.parse(cleanJson);
 
@@ -294,10 +288,10 @@ export default function Dashboard() {
     <main className="min-h-screen bg-gradient-to-br from-[#050508] via-[#0e1017] to-[#050508] text-gray-100 font-sans pb-12 relative overflow-x-hidden selection:bg-blue-500/30">
       {showEmergencyModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-all">
-          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-red-900/50 rounded-2xl w-full max-w-md p-6 shadow-[0_0_80px_rgba(255,0,60,0.25)] animate-in zoom-in-95 duration-300">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-red-900/50 rounded-2xl w-full max-w-sm md:max-w-md p-6 shadow-[0_0_80px_rgba(255,0,60,0.25)] animate-in zoom-in-95 duration-300">
             <div className="flex justify-center mb-5">
-              <div className="w-16 h-16 bg-red-950/80 rounded-full flex items-center justify-center border border-red-900 shadow-[0_0_30px_rgba(255,0,60,0.5)]">
-                <span className="text-2xl animate-pulse">🚨</span>
+              <div className="w-16 h-16 bg-red-950/80 rounded-full flex items-center justify-center border border-red-900 shadow-[0_0_30px_rgba(255,0,60,0.5)] text-red-500 font-black text-2xl">
+                !
               </div>
             </div>
             <h2 className="text-xl font-bold text-white text-center mb-2 tracking-wide uppercase">
@@ -312,7 +306,7 @@ export default function Dashboard() {
                 href="tel:112"
                 className="flex items-center justify-center w-full py-4 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold uppercase tracking-wider transition-colors shadow-[0_0_20px_rgba(220,38,38,0.4)]"
               >
-                📞 Call Emergency Services
+                CALL EMERGENCY (112)
               </a>
               <button
                 onClick={() => setShowEmergencyModal(false)}
@@ -325,20 +319,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0a0c10]/70 backdrop-blur-xl sticky top-0 z-50">
+      {/* MOBILE OPTIMIZED NAV */}
+      <nav className="flex items-center justify-between px-4 py-3 md:px-6 md:py-4 border-b border-white/5 bg-[#0a0c10]/70 backdrop-blur-xl sticky top-0 z-50">
         <div>
-          <h1 className="text-3xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500">
+          <h1 className="text-2xl md:text-3xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500">
             {t.navTitle}
           </h1>
-          <p className="text-[10px] text-blue-200/50 font-mono tracking-widest uppercase mt-0.5">
+          <p className="text-[9px] md:text-[10px] text-blue-200/50 font-mono tracking-widest uppercase mt-0.5">
             Flood Warning System
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
           <button
             onClick={toggleLocation}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all shadow-lg cursor-pointer"
+            className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all shadow-lg cursor-pointer"
           >
             <span className="text-[10px] text-gray-400 font-mono hidden sm:inline">
               LOCATION
@@ -359,12 +354,12 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setIsLangModalOpen(!isLangModalOpen)}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs font-mono text-blue-100 hover:bg-blue-900/40 transition-all shadow-lg"
+              className="flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-xl bg-blue-900/20 border border-blue-500/20 text-[10px] md:text-xs font-mono text-blue-100 hover:bg-blue-900/40 transition-all shadow-lg"
             >
-              {language.toUpperCase()} ⚙️
+              LANG: {language.substring(0, 3).toUpperCase()}
             </button>
             {isLangModalOpen && (
-              <div className="absolute right-0 mt-3 w-44 bg-[#0e1017] border border-white/10 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl">
+              <div className="absolute right-0 mt-3 w-40 bg-[#0e1017] border border-white/10 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl">
                 {(["english", "pidgin", "yoruba", "igbo"] as Language[]).map(
                   (lang) => (
                     <button
@@ -385,17 +380,18 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
-        <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl relative overflow-hidden">
+      {/* MOBILE OPTIMIZED LAYOUT */}
+      <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 mt-2 md:mt-4">
+        <div className="lg:col-span-5 flex flex-col gap-4 md:gap-6">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-4 md:p-6 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
 
             <h2 className="text-sm font-bold text-white mb-1">
               {t.uploadTitle}
             </h2>
-            <p className="text-xs text-gray-400 mb-5">{t.uploadSubtitle}</p>
+            <p className="text-xs text-gray-400 mb-4">{t.uploadSubtitle}</p>
 
-            <label className="block relative w-full h-52 rounded-2xl border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden group">
+            <label className="block relative w-full h-40 md:h-52 rounded-2xl border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden group">
               <input
                 type="file"
                 accept="image/*"
@@ -410,7 +406,25 @@ export default function Dashboard() {
               ) : (
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-3">
                   <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <span className="text-xl">📸</span>
+                    <svg
+                      className="w-6 h-6 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+                      ></path>
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth="2"
+                        d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+                      ></path>
+                    </svg>
                   </div>
                   <span className="text-xs font-mono tracking-wider">
                     Tap to upload photo
@@ -422,13 +436,14 @@ export default function Dashboard() {
             <button
               onClick={handleUpload}
               disabled={loading || !file}
-              className="w-full mt-5 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50 disabled:grayscale flex justify-center items-center gap-3 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
+              className="w-full mt-4 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50 disabled:grayscale flex justify-center items-center gap-3 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
             >
-              {loading ? (
+              {loading && (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : null}
-              {loading ? t.analyzingBtn : t.analyzeBtn}
+              )}
+              {loading ? "ANALYZING... (please hold on)" : t.analyzeBtn}
             </button>
+
             {errorMessage && (
               <p className="mt-4 p-4 bg-red-950/30 border border-red-900/30 rounded-xl text-xs text-red-400 font-mono break-words shadow-inner">
                 Error: {errorMessage}
@@ -436,8 +451,8 @@ export default function Dashboard() {
             )}
           </div>
 
-          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-4 md:p-6 shadow-2xl">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center gap-2">
               System Status
             </h3>
             <div className="space-y-3">
@@ -467,12 +482,12 @@ export default function Dashboard() {
               </div>
 
               {!analysisData && !loading && (
-                <div className="p-5 border border-blue-900/30 bg-blue-500/5 rounded-2xl mt-4 relative overflow-hidden">
+                <div className="p-4 border border-blue-900/30 bg-blue-500/5 rounded-2xl mt-4 relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
                   <h4 className="text-xs font-bold text-blue-400 mb-2 tracking-wider">
                     Ready for Analysis
                   </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed">
+                  <p className="text-[11px] md:text-xs text-gray-400 leading-relaxed">
                     Please upload a photo of the flooded area. The AI will
                     utilize this visual data combined with your device sensors.
                   </p>
@@ -484,9 +499,9 @@ export default function Dashboard() {
           {analysisData && (
             <>
               {analysisData._rawSchemaDrift ? (
-                <div className="bg-gradient-to-b from-red-950/30 to-[#0c0d12] border border-red-900/30 rounded-3xl p-6 shadow-2xl animate-in fade-in">
+                <div className="bg-gradient-to-b from-red-950/30 to-[#0c0d12] border border-red-900/30 rounded-3xl p-4 md:p-6 shadow-2xl animate-in fade-in">
                   <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
-                    ⚠️ Schema Drift Detected
+                    SCHEMA DRIFT DETECTED
                   </h3>
                   <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                     Gemma 4 analyzed the image but returned a non-standard data
@@ -498,62 +513,79 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                  <div className="grid grid-cols-2 gap-3 md:gap-4">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-2xl p-4 shadow-xl hover:border-white/10 transition-colors">
                       <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         Water Depth
                       </span>
-                      <div className="text-2xl font-black font-mono text-white mt-1">
+                      <div className="text-xl md:text-2xl font-black font-mono text-white mt-1">
                         {analysisData?.estimatedWaterLevelMeters || "0.0"}{" "}
-                        <span className="text-sm text-blue-500">m</span>
+                        <span className="text-xs md:text-sm text-blue-500">
+                          m
+                        </span>
                       </div>
                     </div>
-                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-2xl p-4 shadow-xl hover:border-white/10 transition-colors">
                       <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         Struct. Damage
                       </span>
-                      <div className="text-2xl font-black font-mono text-yellow-400 mt-1">
+                      <div className="text-xl md:text-2xl font-black font-mono text-yellow-400 mt-1">
                         {analysisData?.submergedStructuralPercentage || "0"}{" "}
-                        <span className="text-sm text-yellow-600">%</span>
+                        <span className="text-xs md:text-sm text-yellow-600">
+                          %
+                        </span>
                       </div>
                     </div>
-                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-2xl p-4 shadow-xl hover:border-white/10 transition-colors">
                       <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         {t.waterPressure}
                       </span>
-                      <div className="text-2xl font-black font-mono text-white mt-1">
+                      <div className="text-xl md:text-2xl font-black font-mono text-white mt-1">
                         {analysisData?.hydrostaticPressureKPa || "0.0"}{" "}
-                        <span className="text-sm text-blue-500">kPa</span>
+                        <span className="text-xs md:text-sm text-blue-500">
+                          kPa
+                        </span>
                       </div>
                     </div>
-                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-2xl p-4 shadow-xl hover:border-white/10 transition-colors">
                       <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         {t.electricalRisk}
                       </span>
                       <div
-                        className={`text-lg font-black font-mono mt-2 tracking-wider ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" : "text-yellow-400"}`}
+                        className={`text-sm md:text-lg font-black font-mono mt-2 tracking-wider ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" : "text-yellow-400"}`}
                       >
                         {analysisData?.electricalHazardLevel || "Safe"}
                       </div>
                     </div>
                   </div>
-                  <div className="bg-gradient-to-b from-red-950/20 to-[#0c0d12] rounded-3xl border border-red-900/30 p-6 shadow-[0_0_30px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
+
+                  <div className="bg-gradient-to-b from-red-950/20 to-[#0c0d12] rounded-3xl border border-red-900/30 p-4 md:p-6 shadow-[0_0_30px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
                     <div className="flex justify-between mb-4 items-center">
                       <span className="text-xs font-bold text-red-400 uppercase tracking-widest flex items-center gap-2">
-                        <span className="animate-pulse">⚠️</span>{" "}
                         {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
                       </span>
                       <button
                         onClick={handleAudioBroadcast}
-                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 transition-colors border border-red-500/20 text-red-300 text-xs rounded-lg font-mono flex items-center gap-2 shadow-sm"
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 transition-colors border border-red-500/20 text-red-300 text-[10px] md:text-xs rounded-lg font-mono flex items-center gap-2 shadow-sm uppercase"
                       >
-                        🔊 {t.speakBtn}
+                        LISTEN
                       </button>
                     </div>
-                    <div className="p-4 bg-black/40 rounded-2xl border border-red-900/20 text-sm text-gray-200 leading-relaxed shadow-inner">
+                    <div className="p-4 bg-black/40 rounded-2xl border border-red-900/20 text-xs md:text-sm text-gray-200 leading-relaxed shadow-inner">
                       {analysisData?.alerts?.[language] ||
                         "Evacuation analysis pending."}
                     </div>
+
+                    {/* 🚨 PERSISTENT EMERGENCY BUTTON */}
+                    {(analysisData?.riskScore >= 7 ||
+                      analysisData?.status === "CRITICAL") && (
+                      <a
+                        href="tel:112"
+                        className="mt-4 w-full py-3.5 bg-red-600/90 hover:bg-red-500 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-colors shadow-[0_0_20px_rgba(220,38,38,0.3)] flex justify-center items-center"
+                      >
+                        CALL EMERGENCY (112)
+                      </a>
+                    )}
                   </div>
                 </>
               )}
@@ -561,18 +593,18 @@ export default function Dashboard() {
           )}
         </div>
 
-        <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[480px] shadow-2xl">
+        <div className="lg:col-span-7 flex flex-col gap-4 md:gap-6">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[400px] md:h-[480px] shadow-2xl">
             <div className="flex border-b border-white/5 bg-[#0a0c10]/50 backdrop-blur-md">
               <button
                 onClick={() => setActiveTab("3D")}
-                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "3D" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
+                className={`flex-1 py-3 md:py-4 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "3D" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
               >
                 {t.tab3D}
               </button>
               <button
                 onClick={() => setActiveTab("MAP")}
-                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "MAP" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
+                className={`flex-1 py-3 md:py-4 text-[10px] md:text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "MAP" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
               >
                 {t.tabMap}
               </button>
@@ -587,11 +619,11 @@ export default function Dashboard() {
           </div>
 
           {analysisData && !analysisData._rawSchemaDrift && (
-            <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4">
-              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-5">
+            <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-4 md:p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-4">
                 {t.aiReasoning}
               </h3>
-              <div className="space-y-3 text-xs font-mono text-gray-300 bg-[#0a0c10] p-5 rounded-2xl border border-white/5 shadow-inner">
+              <div className="space-y-3 text-[11px] md:text-xs font-mono text-gray-300 bg-[#0a0c10] p-4 md:p-5 rounded-2xl border border-white/5 shadow-inner">
                 <div className="flex gap-3">
                   <span className="text-blue-500/50 font-black">01.</span>{" "}
                   <span className="leading-relaxed">
@@ -619,17 +651,17 @@ export default function Dashboard() {
               </div>
 
               <div className="pt-5">
-                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">
+                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 md:mb-4">
                   {t.fieldActions}
                 </h4>
-                <ul className="space-y-2 text-xs font-mono text-cyan-100">
+                <ul className="space-y-2 text-[11px] md:text-xs font-mono text-cyan-100">
                   {(analysisData?.tacticalActionPlan?.[language] || []).map(
                     (action: string, i: number) => (
                       <li
                         key={i}
-                        className="flex gap-4 items-center bg-blue-500/5 hover:bg-blue-500/10 transition-colors p-3.5 rounded-xl border border-blue-500/10"
+                        className="flex gap-3 items-center bg-blue-500/5 hover:bg-blue-500/10 transition-colors p-3 rounded-xl border border-blue-500/10"
                       >
-                        <span className="text-blue-400 bg-blue-900/30 p-1 rounded-md">
+                        <span className="text-blue-400 bg-blue-900/30 p-1 rounded-md leading-none">
                           ✓
                         </span>
                         <span className="leading-relaxed">{action}</span>
