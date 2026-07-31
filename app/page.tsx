@@ -458,7 +458,7 @@ export default function Dashboard() {
             <div className="space-y-3">
               <div className="flex items-center justify-between p-4 bg-[#0a0c10] rounded-2xl border border-white/5 shadow-inner">
                 <span className="text-xs font-mono text-gray-500 uppercase tracking-wider">
-                  Location Sensor
+                  Location 
                 </span>
                 {locationEnabled ? (
                   <span className="text-xs font-mono text-green-400 font-bold flex items-center gap-2">
