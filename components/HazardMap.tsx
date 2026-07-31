@@ -12,7 +12,6 @@ import {
 import L from "leaflet";
 import { FloodAnalysis } from "@/types";
 
-// 1. Accept userCoords as a prop
 export default function HazardMap({
   data,
   userCoords,
@@ -22,17 +21,28 @@ export default function HazardMap({
 }) {
   const [routeCoords, setRouteCoords] = useState<[number, number][]>([]);
 
-  // 2. Prioritize real device GPS -> fallback to AI -> fallback to default
+  // 🛡️ SMART RENDER: Only show the map AFTER an analysis has been completed
+  if (!data) {
+    return (
+      <div className="w-full h-full min-h-[420px] bg-black/20 flex flex-col items-center justify-center text-gray-500 font-mono text-xs relative">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-900/10 via-transparent to-transparent"></div>
+        <span className="text-4xl mb-3 opacity-30 animate-pulse">🗺️</span>
+        <span className="z-10">
+          Awaiting flood analysis to generate hazard map...
+        </span>
+      </div>
+    );
+  }
+
+  // Uses real GPS if available, otherwise falls back to AI coordinates
   const lat = userCoords?.lat || data?.coordinates?.lat || 7.7969;
   const lng = userCoords?.lng || data?.coordinates?.lng || 6.7333;
-
   const riskColor = (data?.riskScore || 1) >= 7 ? "#ff003c" : "#ffaa00";
 
   // Safe zone ~2.5km away
   const safeZoneLat = lat + 0.02;
   const safeZoneLng = lng + 0.02;
 
-  // Fetch real street routing from OSRM
   useEffect(() => {
     const fetchRoute = async () => {
       try {
@@ -41,7 +51,6 @@ export default function HazardMap({
         );
         const routeData = await res.json();
         if (routeData.routes && routeData.routes[0]) {
-          // OSRM returns [lon, lat], Leaflet needs [lat, lon]
           const mappedCoords = routeData.routes[0].geometry.coordinates.map(
             (coord: number[]) => [coord[1], coord[0]],
           );
@@ -51,7 +60,7 @@ export default function HazardMap({
         setRouteCoords([
           [lat, lng],
           [safeZoneLat, safeZoneLng],
-        ]); // Fallback to straight line
+        ]);
       }
     };
     fetchRoute();
@@ -70,9 +79,9 @@ export default function HazardMap({
   });
 
   return (
-    <div className="w-full h-full min-h-[420px] bg-[#0c0c0e] rounded-xl overflow-hidden border border-white/5 relative">
+    <div className="w-full h-full min-h-[420px] bg-[#0c0c0e] overflow-hidden relative">
       <MapContainer
-        key={`${lat}-${lng}`} // 3. ⚡ Forces the map to physically re-center when GPS updates
+        key={`${lat}-${lng}`}
         center={[lat + 0.01, lng + 0.01]}
         zoom={13}
         scrollWheelZoom={false}
@@ -96,7 +105,6 @@ export default function HazardMap({
           <Popup>High Ground Triage</Popup>
         </Marker>
 
-        {/* Real Street Escape Route */}
         {routeCoords.length > 0 && (
           <Polyline
             positions={routeCoords}
@@ -105,7 +113,7 @@ export default function HazardMap({
         )}
       </MapContainer>
 
-      <div className="absolute top-4 right-4 z-[400] bg-black/80 p-2 rounded-lg text-[10px] text-gray-300 font-mono">
+      <div className="absolute top-4 right-4 z-[400] bg-black/80 p-2 rounded-lg text-[10px] text-gray-300 font-mono shadow-xl border border-white/10">
         <div className="flex items-center gap-2 mb-1">
           <span className="w-2 h-2 bg-red-500 rounded-full"></span> Incident
           Core

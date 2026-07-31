@@ -109,14 +109,15 @@ export default function Dashboard() {
             img.src = event.target?.result as string;
             img.onload = () => {
               const canvas = document.createElement("canvas");
-              const MAX_WIDTH = 800;
+              // ⚡ SPEED OPTIMIZATION: 640px is the perfect balance of detail and minimal token weight
+              const MAX_WIDTH = 640;
               const scaleSize = MAX_WIDTH / img.width;
               canvas.width = MAX_WIDTH;
               canvas.height = img.height * scaleSize;
               const ctx = canvas.getContext("2d");
               if (ctx) {
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                resolve(canvas.toDataURL("image/jpeg", 0.7).split(",")[1]);
+                resolve(canvas.toDataURL("image/jpeg", 0.6).split(",")[1]);
               } else {
                 resolve((reader.result as string).split(",")[1]);
               }
@@ -140,7 +141,7 @@ export default function Dashboard() {
         CRITICAL RULES:
         1. You MUST output ONLY a valid JSON object. 
         2. DO NOT use markdown formatting, conversational text, or bullet points.
-        3. Ensure all keys and nested objects are fully populated. NEVER truncate the output.
+        3. Keep all reasoning chains ultra-short (max 8 words).
         
         Use this EXACT JSON schema:
         {
@@ -170,7 +171,7 @@ export default function Dashboard() {
       `;
 
       const userPrompt =
-        "Analyze this flood image and output the full, complete JSON analysis. Do not stop until all keys are filled.";
+        "Analyze this flood image and output fast, brief, complete JSON.";
 
       const res = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemma-4-26b-a4b-it:generateContent?key=${apiKey}`,
@@ -196,8 +197,8 @@ export default function Dashboard() {
               },
             ],
             generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
+              temperature: 0.0, // ⚡ Absolute zero creativity for raw speed
+              maxOutputTokens: 800, // ⚡ Tight cap to prevent AI run-on sentences
             },
           }),
         },
@@ -283,10 +284,11 @@ export default function Dashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-[#070709] text-gray-100 font-sans pb-12 relative overflow-x-hidden">
+    // 🎨 UI UPGRADE: Beautiful atmospheric dark gradient background
+    <main className="min-h-screen bg-gradient-to-br from-[#050508] via-[#0e1017] to-[#050508] text-gray-100 font-sans pb-12 relative overflow-x-hidden selection:bg-blue-500/30">
       {showEmergencyModal && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md transition-all">
-          <div className="bg-[#0c0c0e] border border-red-900/50 rounded-2xl w-full max-w-md p-6 shadow-[0_0_80px_rgba(255,0,60,0.25)] animate-in zoom-in-95 duration-300">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-red-900/50 rounded-2xl w-full max-w-md p-6 shadow-[0_0_80px_rgba(255,0,60,0.25)] animate-in zoom-in-95 duration-300">
             <div className="flex justify-center mb-5">
               <div className="w-16 h-16 bg-red-950/80 rounded-full flex items-center justify-center border border-red-900 shadow-[0_0_30px_rgba(255,0,60,0.5)]">
                 <span className="text-2xl animate-pulse">🚨</span>
@@ -317,12 +319,14 @@ export default function Dashboard() {
         </div>
       )}
 
-      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/10 bg-[#0c0c0f]/90 backdrop-blur-md sticky top-0 z-50">
+      {/* 🎨 UI UPGRADE: Glassmorphic Nav */}
+      <nav className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0a0c10]/70 backdrop-blur-xl sticky top-0 z-50">
         <div>
-          <h1 className="text-xl font-bold tracking-wider text-white">
+          {/* 🎨 UI UPGRADE: Larger, gradient glowing AMUYO title */}
+          <h1 className="text-3xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-cyan-300 to-blue-500">
             {t.navTitle}
           </h1>
-          <p className="text-[10px] text-gray-400 font-mono">
+          <p className="text-[10px] text-blue-200/50 font-mono tracking-widest uppercase mt-0.5">
             Flood Warning System
           </p>
         </div>
@@ -330,14 +334,14 @@ export default function Dashboard() {
         <div className="flex items-center gap-3">
           <button
             onClick={toggleLocation}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-black/40 border border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-black/40 border border-white/5 hover:bg-white/5 transition-all shadow-lg cursor-pointer"
           >
             <span className="text-[10px] text-gray-400 font-mono hidden sm:inline">
               LOCATION
             </span>
             {locationEnabled ? (
               <span
-                className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse"
+                className="w-2.5 h-2.5 rounded-full bg-green-500 shadow-[0_0_12px_rgba(34,197,94,0.8)] animate-pulse"
                 title="Connected"
               ></span>
             ) : (
@@ -351,12 +355,12 @@ export default function Dashboard() {
           <div className="relative">
             <button
               onClick={() => setIsLangModalOpen(!isLangModalOpen)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-xs font-mono hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-900/20 border border-blue-500/20 text-xs font-mono text-blue-100 hover:bg-blue-900/40 transition-all shadow-lg"
             >
               🌐 {language.toUpperCase()} ⚙️
             </button>
             {isLangModalOpen && (
-              <div className="absolute right-0 mt-2 w-44 bg-[#121216] border border-white/15 rounded-xl shadow-2xl p-2 z-50">
+              <div className="absolute right-0 mt-3 w-44 bg-[#0e1017] border border-white/10 rounded-xl shadow-2xl p-2 z-50 backdrop-blur-xl">
                 {(["english", "pidgin", "yoruba", "igbo"] as Language[]).map(
                   (lang) => (
                     <button
@@ -365,7 +369,7 @@ export default function Dashboard() {
                         setLanguage(lang);
                         setIsLangModalOpen(false);
                       }}
-                      className={`w-full text-left px-3 py-2 text-xs rounded-lg uppercase font-mono ${language === lang ? "bg-blue-600 text-white" : "text-gray-300 hover:bg-white/5"}`}
+                      className={`w-full text-left px-3 py-2.5 text-xs rounded-lg uppercase font-mono tracking-wider transition-colors ${language === lang ? "bg-blue-600 text-white shadow-md" : "text-gray-400 hover:bg-white/5 hover:text-white"}`}
                     >
                       {lang}
                     </button>
@@ -377,15 +381,18 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="max-w-[1300px] mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
         <div className="lg:col-span-5 flex flex-col gap-6">
-          <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl">
+          {/* 🎨 UI UPGRADE: Cards now have subtle gradient backgrounds and softer borders */}
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full blur-3xl"></div>
+
             <h2 className="text-sm font-bold text-white mb-1">
               {t.uploadTitle}
             </h2>
-            <p className="text-xs text-gray-400 mb-4">{t.uploadSubtitle}</p>
+            <p className="text-xs text-gray-400 mb-5">{t.uploadSubtitle}</p>
 
-            <label className="block relative w-full h-48 rounded-xl border-2 border-dashed border-white/15 hover:border-blue-500/50 transition-all cursor-pointer overflow-hidden group">
+            <label className="block relative w-full h-52 rounded-2xl border-2 border-dashed border-white/10 hover:border-blue-500/50 hover:bg-blue-500/5 transition-all cursor-pointer overflow-hidden group">
               <input
                 type="file"
                 accept="image/*"
@@ -395,12 +402,16 @@ export default function Dashboard() {
               {previewUrl ? (
                 <img
                   src={previewUrl}
-                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                  className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-2">
-                  <span className="text-3xl animate-bounce">📱</span>
-                  <span className="text-xs font-mono">Tap to upload photo</span>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 gap-3">
+                  <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <span className="text-xl">📸</span>
+                  </div>
+                  <span className="text-xs font-mono tracking-wider">
+                    Tap to upload photo
+                  </span>
                 </div>
               )}
             </label>
@@ -408,7 +419,7 @@ export default function Dashboard() {
             <button
               onClick={handleUpload}
               disabled={loading || !file}
-              className="w-full mt-4 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all disabled:opacity-40 flex justify-center items-center gap-2 shadow-[0_0_20px_rgba(37,99,235,0.2)]"
+              className="w-full mt-5 py-4 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white rounded-xl text-xs font-bold uppercase tracking-widest transition-all disabled:opacity-50 disabled:grayscale flex justify-center items-center gap-3 shadow-[0_0_30px_rgba(37,99,235,0.2)]"
             >
               {loading ? (
                 <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -416,60 +427,52 @@ export default function Dashboard() {
               {loading ? t.analyzingBtn : t.analyzeBtn}
             </button>
             {errorMessage && (
-              <p className="mt-3 p-3 bg-red-950/40 border border-red-900/50 rounded-lg text-xs text-red-400 font-mono break-words">
+              <p className="mt-4 p-4 bg-red-950/30 border border-red-900/30 rounded-xl text-xs text-red-400 font-mono break-words shadow-inner">
                 Error: {errorMessage}
               </p>
             )}
           </div>
 
-          <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 shadow-xl">
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl">
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
               System Status
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-black/40 rounded-xl border border-white/5">
-                <span className="text-xs font-mono text-gray-400">
-                  Location:
+              <div className="flex items-center justify-between p-4 bg-[#0a0c10] rounded-2xl border border-white/5 shadow-inner">
+                <span className="text-xs font-mono text-gray-500 uppercase tracking-wider">
+                  Location Sensor
                 </span>
                 {locationEnabled ? (
-                  <span className="text-xs font-mono text-green-400 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full"></span>{" "}
-                    CONNECTED
+                  <span className="text-xs font-mono text-green-400 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 bg-green-500 rounded-full shadow-[0_0_8px_#22c55e]"></span>{" "}
+                    ACTIVE
                   </span>
                 ) : (
-                  <span className="text-xs font-mono text-red-400 font-bold flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>{" "}
-                    DISCONNECTED
+                  <span className="text-xs font-mono text-red-400 font-bold flex items-center gap-2">
+                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>{" "}
+                    OFFLINE
                   </span>
                 )}
               </div>
-              <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                <span className="text-xs font-mono text-gray-400 block mb-1">
-                  Current Weather:
+              <div className="p-4 bg-[#0a0c10] rounded-2xl border border-white/5 shadow-inner flex items-center justify-between">
+                <span className="text-xs font-mono text-gray-500 uppercase tracking-wider">
+                  Local Weather
                 </span>
-                <span className="text-xs font-mono text-cyan-200">
+                <span className="text-xs font-mono text-cyan-300 font-bold">
                   {weatherSummary}
                 </span>
               </div>
 
               {!analysisData && !loading && (
-                <div className="p-4 border border-blue-900/30 bg-blue-950/10 rounded-xl mt-2">
-                  <h4 className="text-xs font-bold text-blue-400 mb-1">
-                    What to do next
+                <div className="p-5 border border-blue-900/30 bg-blue-500/5 rounded-2xl mt-4 relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-2xl"></div>
+                  <h4 className="text-xs font-bold text-blue-400 mb-2 tracking-wider">
+                    Ready for Analysis
                   </h4>
-                  <p className="text-xs text-gray-400 leading-relaxed mb-3">
-                    Please upload a photo of the flooded area to begin the
-                    analysis.
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Please upload a photo of the flooded area. The AI will
+                    utilize this visual data combined with your device sensors.
                   </p>
-                  <button
-                    onClick={() => setActiveTab("MAP")}
-                    className="text-xs font-mono text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-2 group"
-                  >
-                    <span className="group-hover:translate-x-1 transition-transform">
-                      &rarr;
-                    </span>{" "}
-                    Open Hazard Map
-                  </button>
                 </div>
               )}
             </div>
@@ -478,70 +481,73 @@ export default function Dashboard() {
           {analysisData && (
             <>
               {analysisData._rawSchemaDrift ? (
-                <div className="bg-red-950/20 border border-red-900/50 rounded-2xl p-5 shadow-xl animate-in fade-in">
+                <div className="bg-gradient-to-b from-red-950/30 to-[#0c0d12] border border-red-900/30 rounded-3xl p-6 shadow-2xl animate-in fade-in">
                   <h3 className="text-xs font-bold text-red-400 uppercase tracking-wider mb-2 flex items-center gap-2">
                     ⚠️ Schema Drift Detected
                   </h3>
-                  <p className="text-xs text-gray-400 mb-3">
+                  <p className="text-xs text-gray-400 mb-4 leading-relaxed">
                     Gemma 4 analyzed the image but returned a non-standard data
                     structure. Raw AI output below:
                   </p>
-                  <pre className="text-[10px] text-red-300 font-mono bg-black/50 p-3 rounded-xl overflow-x-auto border border-red-900/30 whitespace-pre-wrap">
+                  <pre className="text-[10px] text-red-300/80 font-mono bg-black/60 p-4 rounded-2xl overflow-x-auto border border-red-900/20 whitespace-pre-wrap shadow-inner">
                     {analysisData._rawSchemaDrift}
                   </pre>
                 </div>
               ) : (
                 <>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                      <span className="text-xs text-gray-400">Water Depth</span>
-                      <div className="text-xl font-bold font-mono text-white mt-1">
-                        {analysisData?.estimatedWaterLevelMeters || "0.0"}{" "}
-                        <span className="text-xs text-blue-400">m</span>
-                      </div>
-                    </div>
-                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                      <span className="text-xs text-gray-400">
-                        Structural Damage
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                      <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+                        Water Depth
                       </span>
-                      <div className="text-xl font-bold font-mono text-yellow-400 mt-1">
-                        {analysisData?.submergedStructuralPercentage || "0"}{" "}
-                        <span className="text-xs text-yellow-600">%</span>
+                      <div className="text-2xl font-black font-mono text-white mt-1">
+                        {analysisData?.estimatedWaterLevelMeters || "0.0"}{" "}
+                        <span className="text-sm text-blue-500">m</span>
                       </div>
                     </div>
-                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                      <span className="text-xs text-gray-400">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                      <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
+                        Struct. Damage
+                      </span>
+                      <div className="text-2xl font-black font-mono text-yellow-400 mt-1">
+                        {analysisData?.submergedStructuralPercentage || "0"}{" "}
+                        <span className="text-sm text-yellow-600">%</span>
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                      <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         {t.waterPressure}
                       </span>
-                      <div className="text-xl font-bold font-mono text-white mt-1">
+                      <div className="text-2xl font-black font-mono text-white mt-1">
                         {analysisData?.hydrostaticPressureKPa || "0.0"}{" "}
-                        <span className="text-xs text-blue-400">kPa</span>
+                        <span className="text-sm text-blue-500">kPa</span>
                       </div>
                     </div>
-                    <div className="bg-[#111115] border border-white/10 rounded-2xl p-4">
-                      <span className="text-xs text-gray-400">
+                    <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] border border-white/5 rounded-3xl p-5 shadow-xl hover:border-white/10 transition-colors">
+                      <span className="text-[10px] uppercase tracking-widest text-gray-500 font-bold">
                         {t.electricalRisk}
                       </span>
                       <div
-                        className={`text-sm font-bold font-mono mt-1 ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400" : "text-yellow-400"}`}
+                        className={`text-lg font-black font-mono mt-2 tracking-wider ${analysisData?.electricalHazardLevel === "SEVERE" ? "text-red-400 drop-shadow-[0_0_8px_rgba(248,113,113,0.5)]" : "text-yellow-400"}`}
                       >
                         {analysisData?.electricalHazardLevel || "Safe"}
                       </div>
                     </div>
                   </div>
-                  <div className="bg-[#111115] rounded-2xl border border-red-900/50 p-5 shadow-[0_0_20px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
-                    <div className="flex justify-between mb-3 items-center">
-                      <span className="text-xs font-bold text-red-400 uppercase tracking-wider">
-                        ⚠️ {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
+                  <div className="bg-gradient-to-b from-red-950/20 to-[#0c0d12] rounded-3xl border border-red-900/30 p-6 shadow-[0_0_30px_rgba(220,38,38,0.05)] animate-in fade-in slide-in-from-bottom-4">
+                    <div className="flex justify-between mb-4 items-center">
+                      <span className="text-xs font-bold text-red-400 uppercase tracking-widest flex items-center gap-2">
+                        <span className="animate-pulse">⚠️</span>{" "}
+                        {t.threatTitle}: {analysisData?.status || "UNKNOWN"}
                       </span>
                       <button
                         onClick={handleAudioBroadcast}
-                        className="px-2.5 py-1 bg-red-950/80 hover:bg-red-900 transition-colors border border-red-800 text-red-200 text-xs rounded-lg font-mono flex items-center gap-2"
+                        className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 transition-colors border border-red-500/20 text-red-300 text-xs rounded-lg font-mono flex items-center gap-2 shadow-sm"
                       >
                         🔊 {t.speakBtn}
                       </button>
                     </div>
-                    <div className="p-3.5 bg-black/50 rounded-xl border border-red-900/30 text-sm text-gray-200 leading-relaxed">
+                    <div className="p-4 bg-black/40 rounded-2xl border border-red-900/20 text-sm text-gray-200 leading-relaxed shadow-inner">
                       {analysisData?.alerts?.[language] ||
                         "Evacuation analysis pending."}
                     </div>
@@ -553,55 +559,55 @@ export default function Dashboard() {
         </div>
 
         <div className="lg:col-span-7 flex flex-col gap-6">
-          <div className="bg-[#111115] rounded-2xl border border-white/10 overflow-hidden flex flex-col h-[460px] shadow-xl">
-            <div className="flex border-b border-white/10 bg-[#0a0a0d]">
+          <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 overflow-hidden flex flex-col h-[480px] shadow-2xl">
+            <div className="flex border-b border-white/5 bg-[#0a0c10]/50 backdrop-blur-md">
               <button
                 onClick={() => setActiveTab("3D")}
-                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === "3D" ? "text-blue-400 border-b-2 border-blue-500 bg-[#111115]" : "text-gray-500 hover:text-gray-300"}`}
+                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "3D" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
               >
                 {t.tab3D}
               </button>
               <button
                 onClick={() => setActiveTab("MAP")}
-                className={`flex-1 py-3.5 text-xs font-bold uppercase tracking-wider transition-colors ${activeTab === "MAP" ? "text-blue-400 border-b-2 border-blue-500 bg-[#111115]" : "text-gray-500 hover:text-gray-300"}`}
+                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "MAP" ? "text-blue-400 border-b-2 border-blue-500 bg-blue-500/5" : "text-gray-500 hover:text-gray-300 hover:bg-white/5"}`}
               >
                 {t.tabMap}
               </button>
             </div>
-            <div className="flex-1 relative bg-black/20">
+            <div className="flex-1 relative bg-black/40 shadow-inner">
               {activeTab === "3D" ? (
                 <FloodVisualizer data={analysisData} />
               ) : (
-                <HazardMap data={analysisData} />
+                <HazardMap data={analysisData} userCoords={userCoords} />
               )}
             </div>
           </div>
 
           {analysisData && !analysisData._rawSchemaDrift && (
-            <div className="bg-[#111115] rounded-2xl border border-white/10 p-5 space-y-5 shadow-xl animate-in fade-in slide-in-from-bottom-4">
-              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-wider">
+            <div className="bg-gradient-to-b from-[#13151c] to-[#0c0d12] rounded-3xl border border-white/5 p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4">
+              <h3 className="text-xs font-bold text-blue-400 uppercase tracking-widest mb-5">
                 {t.aiReasoning}
               </h3>
-              <div className="space-y-3 text-xs font-mono text-gray-300 bg-black/40 p-4 rounded-xl border border-white/5">
-                <div className="flex gap-2">
-                  <span className="text-blue-400">1.</span>{" "}
-                  <span>
+              <div className="space-y-3 text-xs font-mono text-gray-300 bg-[#0a0c10] p-5 rounded-2xl border border-white/5 shadow-inner">
+                <div className="flex gap-3">
+                  <span className="text-blue-500/50 font-black">01.</span>{" "}
+                  <span className="leading-relaxed">
                     {analysisData?.reasoningChain?.visualBenchmark?.[
                       language
                     ] || "Processing telemetry..."}
                   </span>
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-blue-400">2.</span>{" "}
-                  <span>
+                <div className="flex gap-3">
+                  <span className="text-blue-500/50 font-black">02.</span>{" "}
+                  <span className="leading-relaxed">
                     {analysisData?.reasoningChain?.hydrodynamicForces?.[
                       language
                     ] || "Calculating flow rates..."}
                   </span>
                 </div>
-                <div className="flex gap-2">
-                  <span className="text-blue-400">3.</span>{" "}
-                  <span>
+                <div className="flex gap-3">
+                  <span className="text-blue-500/50 font-black">03.</span>{" "}
+                  <span className="leading-relaxed">
                     {analysisData?.reasoningChain?.predictiveEvacuationWindow?.[
                       language
                     ] || "Evaluating risk vectors..."}
@@ -609,18 +615,20 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="pt-2">
-                <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">
+              <div className="pt-5">
+                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-4">
                   {t.fieldActions}
                 </h4>
-                <ul className="space-y-2 text-xs font-mono text-cyan-200">
+                <ul className="space-y-2 text-xs font-mono text-cyan-100">
                   {(analysisData?.tacticalActionPlan?.[language] || []).map(
                     (action: string, i: number) => (
                       <li
                         key={i}
-                        className="flex gap-3 items-start bg-blue-950/20 p-2.5 rounded-lg border border-blue-900/30"
+                        className="flex gap-4 items-center bg-blue-500/5 hover:bg-blue-500/10 transition-colors p-3.5 rounded-xl border border-blue-500/10"
                       >
-                        <span className="text-blue-400 mt-0.5">✓</span>
+                        <span className="text-blue-400 bg-blue-900/30 p-1 rounded-md">
+                          ✓
+                        </span>
                         <span className="leading-relaxed">{action}</span>
                       </li>
                     ),
